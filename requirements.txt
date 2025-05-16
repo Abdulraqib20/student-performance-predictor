@@ -3,3 +3,9 @@ scikit-learn
 pandas
 numpy
 joblib
+xgboost
+matplotlib
+seaborn
+scipy
+shap
+
