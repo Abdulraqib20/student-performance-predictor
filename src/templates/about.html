@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}About Project - Student Performance Predictor{% endblock %}
+
+{% block content %}
+<style>
+    .about-header {
+        background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("{{ url_for('static', filename='images/background.png') }}") center center no-repeat;
+        background-size: cover;
+        padding: 4rem 0;
+        color: white;
+        border-radius: .3rem; /* Match Bootstrap card rounding */
+    }
+    .about-header h1 {
+        font-weight: 300;
+    }
+    .project-lead {
+        font-size: 1.2rem;
+        font-weight: 300;
+    }
+    .card-custom-header {
+        background-color: var(--bs-primary-bg-subtle);
+        border-bottom: 1px solid var(--bs-border-color-translucent);
+    }
+</style>
+
+<div class="container py-4">
+    <div class="p-5 mb-4 bg-light rounded-3 shadow-sm about-header">
+        <div class="container-fluid py-4 text-center">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="University Logo" style="width: 100px; margin-bottom: 20px; border-radius: 50%; background: white; padding: 5px;">
+            <h1 class="display-4 fw-bold">Student Performance Predictor</h1>
+            <p class="fs-5 col-md-10 mx-auto">An Educational Data Mining project to identify at-risk students using AI and Machine Learning.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Project Overview Section -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm border-light h-100">
+                <div class="card-header card-custom-header">
+                    <h4 class="mb-0 text-primary"><i class="fas fa-bullseye me-2"></i>Project Overview</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        This Student Performance Predictor is an application developed as a final year undergraduate project. It leverages machine learning techniques to predict student academic outcomes based on a variety of personal, social, and academic factors.
+                    </p>
+                    <p>
+                        The primary objective is to provide an early warning system for educators and institutions. By identifying students who are at a higher risk of failing their courses, timely interventions and support mechanisms can be implemented. This proactive approach aims to enhance student success rates, reduce academic attrition, and ultimately improve educational quality.
+                    </p>
+                    <p>
+                        The system analyzes a comprehensive set of features—ranging from demographic details and family background to study habits and social interactions—to build predictive models. These models can then estimate, with a degree of statistical confidence, whether a student is likely to pass or fail, empowering educators to make data-driven decisions.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Machine Learning Models Section -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm border-light h-100">
+                <div class="card-header card-custom-header">
+                    <h4 class="mb-0 text-primary"><i class="fas fa-cogs me-2"></i>Machine Learning Models Used</h4>
+                </div>
+                <div class="card-body">
+                    <p>The application utilizes a suite of well-established machine learning algorithms to perform predictions. Each model offers a different approach to learning patterns from the data:</p>
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                        {% for model_key, metrics in model_performance_metrics.items() %}
+                        <div class="col">
+                            <div class="card h-100 shadow-sm border-light">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary"><i class="fas fa-brain me-2"></i>{{ metrics.name }}</h5>
+                                    <p class="card-text small text-muted">
+                                        {% if metrics.name == 'Logistic Regression' %}A statistical model that uses a logistic function to model a binary dependent variable. Ideal for binary classification tasks.
+                                        {% elif metrics.name == 'Random Forest Classifier' %}An ensemble learning method that constructs a multitude of decision trees at training time and outputs the class that is the mode of the classes of the individual trees.
+                                        {% elif metrics.name == 'Support Vector Machine (SVM)' %}A supervised learning model that uses a separating hyperplane to classify data points. Effective in high-dimensional spaces.
+                                        {% elif metrics.name == 'K-Nearest Neighbors (KNN)' %}A non-parametric lazy learning algorithm that classifies a data point based on the majority class among its k-closest neighbors.
+                                        {% elif metrics.name == 'XGBoost Classifier' %}An optimized distributed gradient boosting library designed to be highly efficient, flexible, and portable. It implements machine learning algorithms under the Gradient Boosting framework.
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dataset Section -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm border-light h-100">
+                <div class="card-header card-custom-header">
+                    <h4 class="mb-0 text-primary"><i class="fas fa-database me-2"></i>Dataset Information</h4>
+                </div>
+                <div class="card-body">
+                    <p>
+                        The predictive models are trained and evaluated using the <a href="https://archive.ics.uci.edu/ml/datasets/Student+Performance" target="_blank" rel="noopener noreferrer">Student Performance Dataset</a> from the UCI Machine Learning Repository. This dataset is specifically collected from two Portuguese secondary schools and encompasses a rich array of student attributes.
+                    </p>
+                    <p>It includes 30 distinct features, categorized broadly as:</p>
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item"><i class="fas fa-user-graduate text-primary me-2"></i><strong>Demographic Information:</strong> Such as school, sex, age, and address type (urban/rural).</li>
+                        <li class="list-group-item"><i class="fas fa-users text-primary me-2"></i><strong>Family Background:</strong> Including family size, parents' cohabitation status, parents' education levels (Medu, Fedu), and parents' occupations (Mjob, Fjob), guardian, and quality of family relationships (famrel).</li>
+                        <li class="list-group-item"><i class="fas fa-book-open text-primary me-2"></i><strong>School-Related Factors:</strong> Travel time to school, weekly study time, number of past class failures, extra educational support (schoolsup, famsup), paid classes, participation in extra-curricular activities, nursery school attendance, and desire for higher education.</li>
+                        <li class="list-group-item"><i class="fas fa-cocktail text-primary me-2"></i><strong>Social & Lifestyle Attributes:</strong> Internet access, romantic relationships, free time after school, frequency of going out with friends, workday alcohol consumption (Dalc), weekend alcohol consumption (Walc), current health status, and number of school absences.</li>
+                    </ul>
+                    <p>
+                        These features collectively provide a holistic view of a student's context, which is crucial for building accurate predictive models for their academic performance (pass/fail).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Research Significance Section -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm border-light h-100">
+                <div class="card-header card-custom-header">
+                    <h4 class="mb-0 text-primary"><i class="fas fa-lightbulb me-2"></i>Research Significance & Contribution</h4>
+                </div>
+                <div class="card-body">
+                    <p>
+                        This project contributes significantly to the field of Educational Data Mining (EDM). By developing a practical, web-based tool, it demonstrates the real-world applicability of machine learning in educational settings. The primary significance lies in its potential to empower educators with data-driven insights, enabling them to:
+                    </p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Identify at-risk students early in their academic journey.</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Implement targeted interventions and personalized support strategies.</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Potentially reduce course failure rates and student attrition.</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Enhance overall student engagement and academic success.</li>
+                    </ul>
+                    <p>
+                        Furthermore, the comparative analysis of various machine learning models within the application provides valuable insights into which algorithms are most effective and robust for this specific educational prediction task on the given dataset. This can inform future research and development in predictive analytics in education.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Credits Section -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm border-light h-100">
+                <div class="card-header card-custom-header">
+                    <h4 class="mb-0 text-primary"><i class="fas fa-user-shield me-2"></i>Project Credits</h4>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="University of Ilorin Logo" style="width: 80px; margin-bottom: 15px; border-radius:50%; background: white; padding: 3px;">
+                    <h5 class="card-title">Adegbenro Afeez Adeshola</h5>
+                    <p class="card-text text-muted">
+                        This Student Performance Predictor was developed as a final-year project in partial fulfillment of the requirements for the award of Bachelor of Science (B.Sc.) degree in Information Technology.
+                    </p>
+                    <p class="card-text">
+                        <strong>Department of Information Technology</strong><br>
+                        Faculty of Communication and Information Sciences<br>
+                        University of Ilorin, Ilorin, Nigeria.
+                    </p>
+                    <p class="mt-3">
+                        <a href="mailto:afeez.adegbenro@example.com" class="btn btn-sm btn-outline-primary"><i class="fas fa-envelope me-2"></i>Contact Developer</a>
+                        <a href="https://www.unilorin.edu.ng" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary"><i class="fas fa-university me-2"></i>University Website</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-5">
+        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg"><i class="fas fa-calculator me-2"></i>Go to Predictor</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // For the background image on the about header, ensure it is in static/images/background.jpg
+    // If you don't have a specific background.jpg, the gradient will still apply.
+    // Example: You might want to find a subtle educational-themed background image.
+</script>
+{% endblock %}

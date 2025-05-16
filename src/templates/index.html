@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Predict Performance - Student Performance Predictor{% endblock %}
+
+{% block content %}
+<style>
+    .info-icon {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-left: 5px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .info-icon:hover {
+        color: var(--bs-primary);
+    }
+    .nav-tabs .nav-link {
+        color: var(--bs-primary);
+        font-weight: 500;
+    }
+    .nav-tabs .nav-link.active {
+        color: var(--bs-dark);
+        background-color: var(--bs-light);
+        border-bottom-color: var(--bs-light);
+        border-bottom-width: 3px;
+    }
+    .card-header {
+        background-color: var(--bs-primary-bg-subtle);
+    }
+    .form-label {
+        font-weight: 500;
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-xl-10 col-lg-10">
+        <div class="card shadow-sm border-light">
+            <div class="card-header text-center py-4">
+                <h2 class="mb-0"><i class="fas fa-brain me-2"></i>Predict Student Performance</h2>
+                <p class="text-muted mb-0">Fill in the student's details below to get a prediction.</p>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                {% if error %}
+                    <div class="alert alert-danger d-flex align-items-center" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <div>
+                            <h5 class="alert-heading mb-1">Error!</h5>
+                            {{ error }}
+                        </div>
+                    </div>
+                {% endif %}
+                {% if preprocessing_warning %}
+                    <div class="alert alert-warning small" role="alert">
+                        <i class="fas fa-triangle-exclamation me-2"></i><strong>Note on Preprocessing:</strong> {{ preprocessing_warning }}
+                    </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('predict') }}" id="predictionForm">
+                    <div class="mb-4 p-3 bg-light border rounded">
+                        <label for="model" class="form-label"><i class="fas fa-cogs me-2"></i>Select Machine Learning Model:</label>
+                        <select name="model" id="model" class="form-select form-select-lg" required>
+                            <option value="" selected disabled>Choose a predictive model...</option>
+                            {% for model_file in models %}
+                                <option value="{{ model_file }}">
+                                    {{ model_display_names.get(model_file, model_file.replace('.pkl', '').replace('.joblib', '') | title) }}
+                                </option>
+                            {% else %}
+                                <option disabled>No models found. Please check configuration.</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted mt-1">Different models may yield different predictions and have varying performance.</small>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <ul class="nav nav-tabs nav-fill mb-4" id="featureTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="student-family-tab" data-bs-toggle="tab" data-bs-target="#student-family" type="button" role="tab" aria-controls="student-family" aria-selected="true">
+                                <i class="fas fa-user-friends me-2"></i>Student & Family Background
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="academic-lifestyle-tab" data-bs-toggle="tab" data-bs-target="#academic-lifestyle" type="button" role="tab" aria-controls="academic-lifestyle" aria-selected="false">
+                                <i class="fas fa-book-reader me-2"></i>Academic & Lifestyle Habits
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content p-3 border bg-light rounded" id="featureTabsContent">
+                        <!-- Student & Family Background Tab -->
+                        <div class="tab-pane fade show active" id="student-family" role="tabpanel" aria-labelledby="student-family-tab">
+                            <h5 class="mb-3 text-primary border-bottom pb-2">Student & Family Information</h5>
+                            <div class="row gx-3 gy-3">
+                                {% set student_family_features = ['school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu', 'Mjob', 'Fjob', 'guardian', 'famrel', 'nursery'] %}
+                                {% for feature_name in student_family_features %}
+                                    {% if feature_name in all_features %}
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="{{ feature_name }}" class="form-label">{{ feature_name | title | replace('_',' ') }}:
+                                                    {% if feature_descriptions and feature_name in feature_descriptions %}
+                                                        <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ feature_descriptions[feature_name] }}"></i>
+                                                    {% endif %}
+                                                </label>
+                                                {% if feature_name in categorical_features_map %}
+                                                    <select name="{{ feature_name }}" id="{{ feature_name }}" class="form-select" required>
+                                                        <option value="" selected disabled>Select {{ feature_name | title | replace('_',' ') }}</option>
+                                                        {% for key, val in categorical_features_map[feature_name].items() %}
+                                                            <option value="{{ key }}">{{ key | title }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                {% elif feature_name in numerical_features %}
+                                                    <input type="number" step="any" name="{{ feature_name }}" id="{{ feature_name }}" class="form-control"
+                                                        placeholder="Enter {{ feature_name | title | replace('_',' ') }}"
+                                                        {% if feature_name == 'age' %} min="15" max="22" {% endif %}
+                                                        {% if feature_name in ['Medu', 'Fedu'] %} min="0" max="4" {% endif %}
+                                                        {% if feature_name == 'traveltime' %} min="1" max="4" {% endif %}
+                                                        {% if feature_name == 'studytime' %} min="1" max="4" {% endif %}
+                                                        {% if feature_name == 'failures' %} min="0" max="3" {% endif %}
+                                                        {% if feature_name == 'famrel' %} min="1" max="5" {% endif %}
+                                                        {% if feature_name == 'health' %} min="1" max="5" {% endif %}
+                                                        {% if feature_name in ['freetime','goout','Dalc','Walc'] %} min="1" max="5" {% endif %}
+                                                        {% if feature_name == 'absences' %} min="0" max="93" {% endif %}
+                                                    required>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Academic & Lifestyle Habits Tab -->
+                        <div class="tab-pane fade" id="academic-lifestyle" role="tabpanel" aria-labelledby="academic-lifestyle-tab">
+                            <h5 class="mb-3 text-primary border-bottom pb-2">Academic & Lifestyle Habits</h5>
+                            <div class="row gx-3 gy-3">
+                                {% set academic_lifestyle_features = ['reason', 'traveltime', 'studytime', 'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'higher', 'internet', 'romantic', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences'] %}
+                                {% for feature_name in academic_lifestyle_features %}
+                                    {% if feature_name in all_features %}
+                                      <div class="col-md-6">
+                                          <div class="form-group">
+                                              <label for="{{ feature_name }}" class="form-label">{{ feature_name | title | replace('_',' ') }}:
+                                                  {% if feature_descriptions and feature_name in feature_descriptions %}
+                                                      <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ feature_descriptions[feature_name] }}"></i>
+                                                  {% endif %}
+                                              </label>
+                                              {% if feature_name in categorical_features_map %}
+                                                  <select name="{{ feature_name }}" id="{{ feature_name }}" class="form-select" required>
+                                                      <option value="" selected disabled>Select {{ feature_name | title | replace('_',' ') }}</option>
+                                                      {% for key, val in categorical_features_map[feature_name].items() %}
+                                                          <option value="{{ key }}">{{ key | title }}</option>
+                                                      {% endfor %}
+                                                  </select>
+                                              {% elif feature_name in numerical_features %}
+                                                  <input type="number" step="any" name="{{ feature_name }}" id="{{ feature_name }}" class="form-control"
+                                                      placeholder="Enter {{ feature_name | title | replace('_',' ') }}"
+                                                      {% if feature_name == 'age' %} min="15" max="22" {% endif %}
+                                                      {% if feature_name in ['Medu', 'Fedu'] %} min="0" max="4" {% endif %}
+                                                      {% if feature_name == 'traveltime' %} min="1" max="4" {% endif %}
+                                                      {% if feature_name == 'studytime' %} min="1" max="4" {% endif %}
+                                                      {% if feature_name == 'failures' %} min="0" max="3" {% endif %}
+                                                      {% if feature_name == 'famrel' %} min="1" max="5" {% endif %}
+                                                      {% if feature_name == 'health' %} min="1" max="5" {% endif %}
+                                                      {% if feature_name in ['freetime','goout','Dalc','Walc'] %} min="1" max="5" {% endif %}
+                                                      {% if feature_name == 'absences' %} min="0" max="93" {% endif %}
+                                                  required>
+                                              {% endif %}
+                                          </div>
+                                      </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4 pt-3 border-top">
+                        <div class="col-md-6 mb-2 mb-md-0">
+                            <button type="button" class="btn btn-outline-secondary btn-lg w-100" id="generateRandomButton"><i class="fas fa-random me-2"></i>Generate Random Inputs</button>
+                        </div>
+                        <div class="col-md-6">
+                            <button type="submit" class="btn btn-primary btn-lg w-100"><i class="fas fa-paper-plane me-2"></i>Predict Performance</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center py-3 bg-light-subtle">
+                <p class="small mb-1 text-muted">Ensure all fields are accurately filled for the best prediction.</p>
+                <a href="{{ url_for('about') }}" class="btn btn-link btn-sm"><i class="fas fa-info-circle me-1"></i>Learn more about this project</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+{{ super() }} {# Include scripts from base.html if any #}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Tab functionality (Bootstrap 5 handles this automatically with data-bs-toggle, but ensure no conflicts)
+    // If manual control is needed for tabs, uncomment and adapt:
+    /*
+    const tabEl = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEl.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function (event) {
+            // console.log(event.target.id + ' is now active');
+        });
+    });
+    */
+
+    // Random Input Generator
+    const form = document.getElementById('predictionForm');
+    const generateButton = document.getElementById('generateRandomButton');
+
+    if (generateButton && form) {
+        generateButton.addEventListener('click', function() {
+            fetch("{{ url_for('generate_random_input') }}")
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        console.error("Error generating random inputs: ", data.error);
+                        alert("Error generating random inputs: " + data.error);
+                        return;
+                    }
+                    for (const feature_name in data) {
+                        const field = form.elements[feature_name];
+                        if (field) {
+                            field.value = data[feature_name];
+                            // If you have selectpickers or other custom controls, you might need to refresh them here
+                            if (field.tagName === 'SELECT') {
+                                // Trigger change event for any listeners
+                                field.dispatchEvent(new Event('change'));
+                            }
+                        } else {
+                            // console.warn('Field not found for random generation: ', feature_name);
+                        }
+                    }
+                    alert('Random input values have been generated and populated!');
+                })
+                .catch(error => {
+                    console.error('Error fetching random inputs:', error);
+                    alert('Could not fetch random inputs. Please check the console for errors and ensure the server is running correctly.');
+                });
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

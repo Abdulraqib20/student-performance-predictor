@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction Result - Student Performance Predictor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-md-11">
+        <div class="card shadow-sm border-light mb-5">
+            <div class="card-header text-center py-4">
+                <h2 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Prediction Result</h2>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                {% if preprocessing_warning %}
+                    <div class="alert alert-warning small mb-4" role="alert">
+                        <i class="fas fa-triangle-exclamation me-2"></i><strong>Note on Preprocessing:</strong> {{ preprocessing_warning }}
+                    </div>
+                {% endif %}
+
+                <div class="text-center mb-4">
+                    <h3 class="mb-3 fw-normal">Predicted Outcome</h3>
+                    {% if prediction == "Pass" %}
+                        <div class="alert alert-success py-3">
+                            <span class="display-4 text-success"><i class="fas fa-user-check me-2"></i>PASS</span>
+                            <p class="lead mt-2 mb-0">The model predicts the student will likely <strong>pass</strong> the course.</p>
+                        </div>
+                    {% elif prediction == "Fail" %}
+                        <div class="alert alert-danger py-3">
+                            <span class="display-4 text-danger"><i class="fas fa-user-times me-2"></i>FAIL</span>
+                            <p class="lead mt-2 mb-0">The model predicts the student is at risk of <strong>failing</strong> the course.</p>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-secondary py-3">
+                             <h1 class="display-5 my-2"><strong>{{ prediction }}</strong></h1>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-5 mb-4 mb-lg-0">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header">
+                                <h5 class="mb-0 text-primary"><i class="fas fa-cogs me-2"></i>Model Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <p><strong><i class="fas fa-brain me-2"></i>Model Used:</strong><br>{{ model_name }}</p>
+                                <p class="mb-0"><small class="text-muted"><i class="fas fa-file-code me-2"></i>Identifier: {{ raw_model_name }}</small></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header">
+                                <h5 class="mb-0 text-primary"><i class="fas fa-tachometer-alt me-2"></i>Model Performance Metrics</h5>
+                            </div>
+                            <div class="card-body" style="font-size: 0.9rem;">
+                                {% if model_metrics %}
+                                    {% for metric, value in model_metrics.items() %}
+                                        {% if metric != 'name' %}
+                                            <div class="mb-2 pt-1">
+                                                <div class="d-flex justify-content-between">
+                                                    <span class="metric-label">{{ metric | replace('_',' ') }}:</span>
+                                                    <span class="metric-value text-primary">{{ value }}</span>
+                                                </div>
+                                                {% set numeric_value = value.replace('%', '') | float %}
+                                                <div class="progress mt-1" style="height: 14px;">
+                                                    <div class="progress-bar progress-bar-striped bg-primary" role="progressbar" style="width: {{ numeric_value }}%;" aria-valuenow="{{ numeric_value }}" aria-valuemin="0" aria-valuemax="100">{{value}}</div>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted fst-italic">Performance metrics are not available for this model.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4 shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0 text-primary"><i class="fas fa-user-edit me-2"></i>Input Features Provided</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row gx-3 gy-2" style="font-size: 0.9rem;">
+                            {% for key, val in features_display.items() %}
+                                <div class="col-md-6">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light" style="min-width: 130px;">{{ key | title | replace('_',' ') }}</span>
+                                        <input type="text" class="form-control" value="{{ val }}" readonly disabled>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-center py-3">
+                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg px-4 me-sm-3"><i class="fas fa-redo-alt me-2"></i>Make Another Prediction</a>
+                    <a href="{{ url_for('about') }}" class="btn btn-outline-secondary btn-lg px-4"><i class="fas fa-info-circle me-2"></i>About This Project</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

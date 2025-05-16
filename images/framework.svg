@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+    <!-- Background -->
+    <rect width="1000" height="600" fill="#ffffff"/>
+    
+    <!-- Stage 1: Data Preprocessing -->
+    <rect x="50" y="50" width="200" height="100" rx="10" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+    <text x="150" y="85" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">Data Preprocessing</text>
+    <text x="150" y="110" text-anchor="middle" font-family="Arial" font-size="12">- Missing Value Handling</text>
+    <text x="150" y="130" text-anchor="middle" font-family="Arial" font-size="12">- Feature Encoding</text>
+    
+    <!-- Arrow 1 -->
+    <path d="M250 100 L300 100" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+    
+    <!-- Stage 2: Feature Selection -->
+    <rect x="300" y="50" width="200" height="100" rx="10" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+    <text x="400" y="85" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">Feature Selection</text>
+    <text x="400" y="110" text-anchor="middle" font-family="Arial" font-size="12">- Correlation Analysis</text>
+    <text x="400" y="130" text-anchor="middle" font-family="Arial" font-size="12">- Feature Importance</text>
+    
+    <!-- Arrow 2 -->
+    <path d="M500 100 L550 100" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+    
+    <!-- Stage 3: Split -->
+    <rect x="550" y="50" width="200" height="100" rx="10" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+    <text x="650" y="85" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">Train-Test Split</text>
+    <text x="650" y="110" text-anchor="middle" font-family="Arial" font-size="12">- Training Set (80%)</text>
+    <text x="650" y="130" text-anchor="middle" font-family="Arial" font-size="12">- Test Set (20%)</text>
+    
+    <!-- Split Arrows -->
+    <path d="M650 150 L650 200" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+    
+    <!-- Logistic Regression Branch -->
+    <rect x="300" y="200" width="200" height="120" rx="10" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+    <text x="400" y="230" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">Logistic Regression</text>
+    <text x="400" y="255" text-anchor="middle" font-family="Arial" font-size="12">- Model Training</text>
+    <text x="400" y="275" text-anchor="middle" font-family="Arial" font-size="12">- Cross Validation</text>
+    <text x="400" y="295" text-anchor="middle" font-family="Arial" font-size="12">- Parameter Optimization</text>
+    
+    <!-- XGBoost Branch -->
+    <rect x="800" y="200" width="200" height="120" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
+    <text x="900" y="230" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">XGBoost</text>
+    <text x="900" y="255" text-anchor="middle" font-family="Arial" font-size="12">- Model Training</text>
+    <text x="900" y="275" text-anchor="middle" font-family="Arial" font-size="12">- Hyperparameter Tuning</text>
+    <text x="900" y="295" text-anchor="middle" font-family="Arial" font-size="12">- Grid Search CV</text>
+    
+    <!-- Connecting Lines -->
+    <path d="M650 200 L400 200" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <path d="M650 200 L900 200" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+    
+    <!-- Evaluation Box -->
+    <rect x="550" y="400" width="200" height="150" rx="10" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+    <text x="650" y="430" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">Model Evaluation</text>
+    <text x="650" y="455" text-anchor="middle" font-family="Arial" font-size="12">- Accuracy</text>
+    <text x="650" y="475" text-anchor="middle" font-family="Arial" font-size="12">- Precision/Recall</text>
+    <text x="650" y="495" text-anchor="middle" font-family="Arial" font-size="12">- F1 Score</text>
+    <text x="650" y="515" text-anchor="middle" font-family="Arial" font-size="12">- AUC-ROC</text>
+    <text x="650" y="535" text-anchor="middle" font-family="Arial" font-size="12">- Confusion Matrix</text>
+    
+    <!-- Final Arrows -->
+    <path d="M400 320 L650 400" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <path d="M900 320 L650 400" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+    
+    <!-- Arrow Marker Definition -->
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#1976d2"/>
+        </marker>
+    </defs>
+</svg>

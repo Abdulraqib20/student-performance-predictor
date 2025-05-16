@@ -1,0 +1,190 @@
+/* Import Google Font - Poppins */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Define root variables for easy theme customization */
+:root {
+    --bs-font-sans-serif: 'Poppins', sans-serif;
+    /* You can define other global variables here, for example:
+    --primary-color: #0d6efd; /* Default Bootstrap Primary */
+    /* --secondary-color: #6c757d; /* Default Bootstrap Secondary */
+    /* You can override Bootstrap defaults or add your own theme colors */
+}
+
+/* Apply the font to the body */
+body {
+    font-family: var(--bs-font-sans-serif);
+    padding-top: 70px;
+    /* Adjust if navbar height changes */
+    background-color: #f8f9fa;
+    /* A light background for the page */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.navbar {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -1px rgba(0, 0, 0, .06);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.navbar-brand img {
+    border: 2px solid white;
+    /* Adds a white border to the logo in the navbar */
+}
+
+.card {
+    border: 1px solid var(--bs-border-color-translucent);
+    /* Softer border for cards */
+    /* transition: all 0.3s ease-in-out; */
+    /* Optional: subtle hover effect for cards */
+}
+
+/* .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+}*/
+
+.card-header {
+    /* Using a slightly different shade for headers for Brite theme compatibility */
+    background-color: #e9ecef;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+.card-header h2,
+.card-header h3,
+.card-header h4,
+.card-header h5 {
+    color: var(--bs-dark);
+    /* Ensure header text is dark for light backgrounds */
+}
+
+.btn {
+    font-weight: 500;
+    /* text-transform: uppercase; */
+    /* Optional: for a different button style */
+    /* letter-spacing: 0.5px; */
+    /* Optional */
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.custom-select {
+    border-radius: .25rem;
+}
+
+.footer {
+    background-color: #e9ecef !important;
+    /* Light grey footer */
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 0.9rem;
+}
+
+.footer p {
+    color: #6c757d !important;
+    /* Darker grey text for better contrast */
+}
+
+.alert-info ul {
+    margin-bottom: 0;
+}
+
+/* Make card body taller if content is short */
+.card-body {
+    min-height: 300px;
+    /* Adjust as needed */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Ensure form elements don't cause overflow on smaller screens */
+input[type="number"] {
+    max-width: 100%;
+}
+
+/* Alert styling enhancements */
+.alert-heading {
+    font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    body {
+        padding-top: 60px;
+        /* Adjust for potentially smaller navbar on mobile */
+    }
+
+    .display-4 {
+        font-size: 2.5rem;
+        /* Slightly smaller display headings on mobile */
+    }
+}
+
+/* Specific to index.html tabs */
+.nav-tabs .nav-link {
+    color: var(--bs-primary);
+    /* Using Bootstrap's primary color from Brite */
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--bs-dark);
+    background-color: #f8f9fa;
+    /* Light background for active tab */
+    border-bottom-color: var(--bs-primary);
+    border-bottom-width: 3px;
+}
+
+/* Specific to result.html metric bars */
+.metric-label {
+    font-weight: 500;
+}
+
+.progress-bar {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--bs-dark);
+    /* Ensure text on progress bar is visible */
+}
+
+.metric-value {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* About page custom header */
+.about-header {
+    background-size: cover;
+    padding: 3rem 1.5rem;
+    color: white;
+    border-radius: .3rem;
+    text-align: center;
+}
+
+.about-header h1 {
+    font-weight: 700;
+}
+
+.about-header img {
+    border: 3px solid white;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.card-custom-header {
+    background-color: #e9ecef;
+    /* Match other headers */
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+}
