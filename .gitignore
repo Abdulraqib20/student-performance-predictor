@@ -28,7 +28,7 @@ Thumbs.db
 
 # Data files
 *.csv
-*.json
+# *.json
 *.xml
 *.pkl
 
