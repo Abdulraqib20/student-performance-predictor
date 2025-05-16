@@ -109,6 +109,118 @@
             </div>
         </div>
 
+        <!-- Dataset Insights Section (NEW) -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm border-light h-100">
+                <div class="card-header card-custom-header">
+                    <h4 class="mb-0 text-primary"><i class="fas fa-chart-bar me-2"></i>Dataset Insights & Visualizations</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        Visual exploration of the dataset provides valuable insights into the distribution of key features and their potential relationship with student performance.
+                    </p>
+
+                    {% if dataset_stats %}
+                    <div class="row g-4">
+                        <!-- Parents' Education Chart -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Parents' Education Level</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="parentsEducationChart" height="250"></canvas>
+                                </div>
+                                <div class="card-footer bg-light small text-muted">
+                                    Education levels: 0 - none, 1 - primary, 2 - 5th to 9th grade, 3 - secondary, 4 - higher education
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Age Distribution Chart -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Student Age Distribution</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="ageDistributionChart" height="250"></canvas>
+                                </div>
+                                <div class="card-footer bg-light small text-muted">
+                                    Age range of students in the dataset
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alcohol Consumption Chart -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Alcohol Consumption Patterns</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="alcoholConsumptionChart" height="250"></canvas>
+                                </div>
+                                <div class="card-footer bg-light small text-muted">
+                                    Comparison between workday (Dalc) and weekend (Walc) alcohol consumption (1-very low to 5-very high)
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Absences Distribution Chart -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">School Absences Distribution</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="absencesChart" height="250"></canvas>
+                                </div>
+                                <div class="card-footer bg-light small text-muted">
+                                    Number of school absences grouped into ranges
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pass/Fail Distribution Chart -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Pass/Fail Distribution</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="passFailChart" height="250"></canvas>
+                                </div>
+                                <div class="card-footer bg-light small text-muted">
+                                    Distribution of pass/fail outcomes in the dataset
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Internet Access vs. Performance -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Internet Access vs. Performance</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="internetPerformanceChart" height="250"></canvas>
+                                </div>
+                                <div class="card-footer bg-light small text-muted">
+                                    Relationship between internet access at home and academic performance
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <p>Dataset statistics are not currently available. Please ensure the dataset file exists and can be processed.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
         <!-- Research Significance Section -->
         <div class="col-lg-12">
             <div class="card shadow-sm border-light h-100">
@@ -170,5 +282,281 @@
     // For the background image on the about header, ensure it is in static/images/background.jpg
     // If you don't have a specific background.jpg, the gradient will still apply.
     // Example: You might want to find a subtle educational-themed background image.
+
+    {% if dataset_stats %}
+    document.addEventListener('DOMContentLoaded', function() {
+        // Common Chart.js options
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.raw;
+                        }
+                    }
+                }
+            }
+        };
+
+        // Parents' Education Chart
+        new Chart(document.getElementById('parentsEducationChart'), {
+            type: 'bar',
+            data: {
+                labels: ['0', '1', '2', '3', '4'],
+                datasets: [
+                    {
+                        label: 'Mother\'s Education',
+                        data: [
+                            {{ dataset_stats.medu_counts.get(0, 0) }},
+                            {{ dataset_stats.medu_counts.get(1, 0) }},
+                            {{ dataset_stats.medu_counts.get(2, 0) }},
+                            {{ dataset_stats.medu_counts.get(3, 0) }},
+                            {{ dataset_stats.medu_counts.get(4, 0) }}
+                        ],
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Father\'s Education',
+                        data: [
+                            {{ dataset_stats.fedu_counts.get(0, 0) }},
+                            {{ dataset_stats.fedu_counts.get(1, 0) }},
+                            {{ dataset_stats.fedu_counts.get(2, 0) }},
+                            {{ dataset_stats.fedu_counts.get(3, 0) }},
+                            {{ dataset_stats.fedu_counts.get(4, 0) }}
+                        ],
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Education Level'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Age Distribution Chart
+        new Chart(document.getElementById('ageDistributionChart'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys({{ dataset_stats.age_counts|tojson }}),
+                datasets: [{
+                    label: 'Number of Students',
+                    data: Object.values({{ dataset_stats.age_counts|tojson }}),
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Age'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Alcohol Consumption Chart
+        new Chart(document.getElementById('alcoholConsumptionChart'), {
+            type: 'bar',
+            data: {
+                labels: ['1', '2', '3', '4', '5'],
+                datasets: [
+                    {
+                        label: 'Workday Alcohol',
+                        data: [
+                            {{ dataset_stats.dalc_counts.get(1, 0) }},
+                            {{ dataset_stats.dalc_counts.get(2, 0) }},
+                            {{ dataset_stats.dalc_counts.get(3, 0) }},
+                            {{ dataset_stats.dalc_counts.get(4, 0) }},
+                            {{ dataset_stats.dalc_counts.get(5, 0) }}
+                        ],
+                        backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Weekend Alcohol',
+                        data: [
+                            {{ dataset_stats.walc_counts.get(1, 0) }},
+                            {{ dataset_stats.walc_counts.get(2, 0) }},
+                            {{ dataset_stats.walc_counts.get(3, 0) }},
+                            {{ dataset_stats.walc_counts.get(4, 0) }},
+                            {{ dataset_stats.walc_counts.get(5, 0) }}
+                        ],
+                        backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Consumption Level (1-Very Low to 5-Very High)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Absences Distribution Chart
+        new Chart(document.getElementById('absencesChart'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys({{ dataset_stats.absences_counts|tojson }}),
+                datasets: [{
+                    label: 'Number of Students',
+                    data: Object.values({{ dataset_stats.absences_counts|tojson }}),
+                    backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Number of Absences'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Pass/Fail Chart
+        new Chart(document.getElementById('passFailChart'), {
+            type: 'pie',
+            data: {
+                labels: ['Pass', 'Fail'],
+                datasets: [{
+                    data: [
+                        {{ dataset_stats.pass_fail_counts.get('yes', 0) }},
+                        {{ dataset_stats.pass_fail_counts.get('no', 0) }}
+                    ],
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(255, 99, 132, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
+
+        // Internet Access vs. Performance Chart
+        new Chart(document.getElementById('internetPerformanceChart'), {
+            type: 'bar',
+            data: {
+                labels: ['With Internet', 'Without Internet'],
+                datasets: [
+                    {
+                        label: 'Pass',
+                        data: [
+                            {{ dataset_stats.internet_yes_pass }},
+                            {{ dataset_stats.internet_no_pass }}
+                        ],
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Fail',
+                        data: [
+                            {{ dataset_stats.internet_yes_fail }},
+                            {{ dataset_stats.internet_no_fail }}
+                        ],
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Internet Access at Home'
+                        }
+                    }
+                }
+            }
+        });
+    });
+    {% endif %}
 </script>
 {% endblock %}

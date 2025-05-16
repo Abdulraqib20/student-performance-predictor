@@ -199,7 +199,46 @@ def index():
 @login_required
 def about():
     """Render the about page with project information"""
-    return render_template('about.html', model_performance_metrics=MODEL_PERFORMANCE_METRICS)
+    # Load dataset for visualizations
+    dataset_path = os.path.join('data', 'student-data.csv')
+    dataset_stats = {}
+
+    try:
+        if os.path.exists(dataset_path):
+            df = pd.read_csv(dataset_path)
+
+            # Distribution of parents' education (Medu/Fedu)
+            dataset_stats['medu_counts'] = df['Medu'].value_counts().sort_index().to_dict()
+            dataset_stats['fedu_counts'] = df['Fedu'].value_counts().sort_index().to_dict()
+
+            # Age distribution
+            dataset_stats['age_counts'] = df['age'].value_counts().sort_index().to_dict()
+
+            # Absences distribution (binned)
+            absences_bins = [0, 5, 10, 15, 20, 30, 100]
+            absences_labels = ['0-5', '6-10', '11-15', '16-20', '21-30', '31+']
+            df['absences_binned'] = pd.cut(df['absences'], bins=absences_bins, labels=absences_labels)
+            dataset_stats['absences_counts'] = df['absences_binned'].value_counts().to_dict()
+
+            # Alcohol consumption (weekend vs. weekday)
+            dataset_stats['walc_counts'] = df['Walc'].value_counts().sort_index().to_dict()
+            dataset_stats['dalc_counts'] = df['Dalc'].value_counts().sort_index().to_dict()
+
+            # Pass/Fail distribution
+            dataset_stats['pass_fail_counts'] = df['passed'].value_counts().to_dict()
+
+            # Internet access vs. performance
+            internet_pass_fail = df.groupby(['internet', 'passed']).size().unstack(fill_value=0)
+            dataset_stats['internet_yes_pass'] = internet_pass_fail.loc['yes', 'yes'] if ('yes' in internet_pass_fail.index and 'yes' in internet_pass_fail.columns) else 0
+            dataset_stats['internet_yes_fail'] = internet_pass_fail.loc['yes', 'no'] if ('yes' in internet_pass_fail.index and 'no' in internet_pass_fail.columns) else 0
+            dataset_stats['internet_no_pass'] = internet_pass_fail.loc['no', 'yes'] if ('no' in internet_pass_fail.index and 'yes' in internet_pass_fail.columns) else 0
+            dataset_stats['internet_no_fail'] = internet_pass_fail.loc['no', 'no'] if ('no' in internet_pass_fail.index and 'no' in internet_pass_fail.columns) else 0
+
+    except Exception as e:
+        print(f"Error preparing dataset statistics: {e}")
+        dataset_stats = {}
+
+    return render_template('about.html', model_performance_metrics=MODEL_PERFORMANCE_METRICS, dataset_stats=dataset_stats)
 
 @app.route('/predict', methods=['POST'])
 @login_required
