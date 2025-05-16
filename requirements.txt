@@ -1,17 +1,11 @@
-# Flask
-# scikit-learn
-# pandas
-# numpy
-# joblib
-# xgboost
+Flask
+scikit-learn
+pandas
+numpy
+joblib
+xgboost
 # matplotlib
 # seaborn
 # scipy
 # shap
-# gunicorn
-
-Flask
-joblib
-numpy
-pandas
 gunicorn

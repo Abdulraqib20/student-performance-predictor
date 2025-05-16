@@ -288,8 +288,12 @@ def generate_random_input():
         print(f"Error in /generate_random_input: {e}")
         return jsonify({"error": str(e)}), 500
 
+# if __name__ == '__main__':
+#     # Ensure the app is run from the root directory or adjust path to data/models if needed
+#     # For example, if running from src/ -> python app.py
+#     # The MODEL_DIR is already ../models
+#     app.run(debug=True)
+
 if __name__ == '__main__':
-    # Ensure the app is run from the root directory or adjust path to data/models if needed
-    # For example, if running from src/ -> python app.py
-    # The MODEL_DIR is already ../models
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

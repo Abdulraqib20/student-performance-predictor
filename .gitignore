@@ -48,3 +48,4 @@ src/code-Copy1.ipynb
 src/Proposal.ipynb
 deploy.ps1
 .vercel
+.env
