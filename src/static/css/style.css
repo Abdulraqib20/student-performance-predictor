@@ -188,3 +188,89 @@ input[type="number"] {
     /* Match other headers */
     border-bottom: 1px solid var(--bs-border-color-translucent);
 }
+
+/* Login Page Styles */
+body.login-page {
+    background: linear-gradient(to right, #6a11cb, #2575fc);
+    /* Or a nice image background:
+    background-image: url("../images/login-background.jpg");
+    background-size: cover;
+    background-position: center;
+    */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    /* Ensure it covers the full viewport height */
+    align-items: center;
+    /* Center content horizontally */
+    justify-content: center;
+    /* Center content vertically */
+}
+
+.login-page .card {
+    border: none;
+    border-radius: 1rem;
+    background-color: rgba(255, 255, 255, 0.95);
+    /* Slightly transparent white */
+}
+
+.login-page .card-header {
+    background-color: #0d6efd;
+    /* Primary color, can be adjusted */
+    color: white;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+}
+
+.login-page .card-header h3 {
+    font-weight: 300;
+}
+
+.login-page .btn-primary {
+    background-color: #0d6efd;
+    border: none;
+    padding: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.login-page .btn-primary:hover {
+    background-color: #0b5ed7;
+}
+
+.login-page .form-control {
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+/* Ensure that the main content area for login doesn't have the usual top padding
+   meant for when the fixed navbar is opaque and takes space.
+   The login page typically uses the full screen.
+*/
+.login-page main.container {
+    padding-top: 0 !important;
+    /* Override general pt-5 for navbar */
+    display: flex;
+    /* Helps in centering the card if not already done by body */
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+/* Hide footer on login page for a cleaner look, or style it differently */
+.login-page .footer {
+    display: none;
+}
+
+/* Adjust navbar for login page if needed - for now, base.html handles logged_in state */
+.login-page .navbar {
+    /* Example: make it transparent or less prominent if desired */
+    /* background-color: transparent !important; */
+    /* box-shadow: none !important; */
+}
+
+.login-page .navbar-brand {
+    /* color: #fff; */
+    /* Ensure visibility if navbar is transparent */
+}

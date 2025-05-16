@@ -1,11 +1,20 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 import joblib
 import numpy as np
 import os
 import pandas as pd # Added for CSV parsing if needed later, not strictly used for mappings now
 import random # Added for random value generation
+from functools import wraps # Added for login_required decorator
 
 app = Flask(__name__)
+# It's crucial to set a secret key for session management.
+# In a real application, use a strong, randomly generated key and keep it secret.
+# For example, you can generate one using: import os; os.urandom(24)
+app.secret_key = b'_5#y2L"F4Q8z\n\xec]/' # Example key, replace in production
+
+# Configuration for login
+USERNAME = "21/52HL155"
+PASSWORD = "hayzed"
 
 # More robust path to the models directory
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -140,7 +149,40 @@ def load_model_names():
         print(f"Warning: No usable models found in {MODEL_DIR} that match MODEL_PERFORMANCE_METRICS keys.")
     return models
 
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username == USERNAME and password == PASSWORD:
+            session['logged_in'] = True
+            session['username'] = username
+            flash('Logged in successfully!', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('index'))
+        else:
+            flash('Invalid username or password. Please try again.', 'danger')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    session.pop('username', None)
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def index():
     model_files = load_model_names()
     # Filter display names to only include loaded models
@@ -154,11 +196,13 @@ def index():
                            feature_descriptions=FEATURE_DESCRIPTIONS)
 
 @app.route('/about')
+@login_required
 def about():
     """Render the about page with project information"""
     return render_template('about.html', model_performance_metrics=MODEL_PERFORMANCE_METRICS)
 
 @app.route('/predict', methods=['POST'])
+@login_required
 def predict():
     model_files = load_model_names()
     active_model_display_names = {mf: MODEL_DISPLAY_NAMES.get(mf, mf.replace('.joblib','').replace('.pkl','').title()) for mf in model_files}
@@ -224,6 +268,7 @@ def predict():
     return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, preprocessing_warning=preprocessing_warning)
 
 @app.route('/generate_random_input')
+@login_required
 def generate_random_input():
     random_inputs = {}
     try:
