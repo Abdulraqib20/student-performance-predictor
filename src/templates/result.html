@@ -33,6 +33,26 @@
                              <h1 class="display-5 my-2"><strong>{{ prediction }}</strong></h1>
                         </div>
                     {% endif %}
+
+                    {% if actual_value_from_dataset is not none and actual_value_from_dataset != '' %}
+                        <h3 class="mt-4 mb-2 fw-normal">Actual Outcome (from Dataset)</h3>
+                        {% if actual_value_from_dataset|lower == 'yes' or actual_value_from_dataset == 1 %}
+                            <div class="alert alert-info py-3">
+                                <span class="display-5 text-info"><i class="fas fa-check-circle me-2"></i>ACTUAL: PASS</span>
+                                <p class="lead mt-2 mb-0">The dataset indicates the student <strong>passed</strong>.</p>
+                            </div>
+                        {% elif actual_value_from_dataset|lower == 'no' or actual_value_from_dataset == 0 %}
+                            <div class="alert alert-warning py-3">
+                                <span class="display-5 text-warning"><i class="fas fa-times-circle me-2"></i>ACTUAL: FAIL</span>
+                                <p class="lead mt-2 mb-0">The dataset indicates the student <strong>failed</strong>.</p>
+                            </div>
+                        {% else %}
+                             <div class="alert alert-secondary py-3">
+                                <span class="display-5 text-secondary"><i class="fas fa-question-circle me-2"></i>ACTUAL: {{ actual_value_from_dataset | title }}</span>
+                                <p class="lead mt-2 mb-0">Actual outcome from dataset: <strong>{{ actual_value_from_dataset | title }}</strong>.</p>
+                            </div>
+                        {% endif %}
+                    {% endif %}
                 </div>
 
                 <div class="row g-4">

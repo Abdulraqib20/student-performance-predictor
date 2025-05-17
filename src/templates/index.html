@@ -56,19 +56,37 @@
                 {% endif %}
 
                 <form method="POST" action="{{ url_for('predict') }}" id="predictionForm">
-                    <div class="mb-4 p-3 bg-light border rounded">
-                        <label for="model" class="form-label"><i class="fas fa-cogs me-2"></i>Select Machine Learning Model:</label>
-                        <select name="model" id="model" class="form-select form-select-lg" required>
-                            <option value="" selected disabled>Choose a predictive model...</option>
-                            {% for model_file in models %}
-                                <option value="{{ model_file }}">
-                                    {{ model_display_names.get(model_file, model_file.replace('.pkl', '').replace('.joblib', '') | title) }}
-                                </option>
-                            {% else %}
-                                <option disabled>No models found. Please check configuration.</option>
-                            {% endfor %}
-                        </select>
-                        <small class="form-text text-muted mt-1">Different models may yield different predictions and have varying performance.</small>
+                    <input type="hidden" name="actual_value_from_dataset" id="actual_value_from_dataset" value="">
+
+                    <div class="row mb-4 align-items-end">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light border rounded">
+                                <label for="model" class="form-label"><i class="fas fa-cogs me-2"></i>Select Machine Learning Model:</label>
+                                <select name="model" id="model" class="form-select form-select-lg" required>
+                                    <option value="" selected disabled>Choose a predictive model...</option>
+                                    {% for model_file in models %}
+                                        <option value="{{ model_file }}">
+                                            {{ model_display_names.get(model_file, model_file.replace('.pkl', '').replace('.joblib', '') | title) }}
+                                        </option>
+                                    {% else %}
+                                        <option disabled>No models found. Please check configuration.</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted mt-1">Different models may yield different predictions and have varying performance.</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            {% if dataset_row_count > 0 %}
+                            <div class="p-3 bg-light border rounded">
+                                <label for="dataset_row_index" class="form-label"><i class="fas fa-database me-2"></i>Load Data from Dataset (Row 0 to {{ dataset_row_count - 1 }}):</label>
+                                <div class="input-group">
+                                    <input type="number" id="dataset_row_index" class="form-control" placeholder="Enter Row Index (0-{{ dataset_row_count - 1 }})" min="0" max="{{ dataset_row_count - 1 }}">
+                                    <button class="btn btn-outline-success" type="button" id="loadDatasetRowButton"><i class="fas fa-download me-1"></i> Load Row</button>
+                                </div>
+                                <small class="form-text text-muted mt-1">Select a row from the dataset to pre-fill inputs and compare with actual outcome.</small>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <hr class="my-4">
@@ -208,6 +226,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Random Input Generator
     const form = document.getElementById('predictionForm');
     const generateButton = document.getElementById('generateRandomButton');
+    const loadDatasetRowButton = document.getElementById('loadDatasetRowButton');
+    const datasetRowIndexInput = document.getElementById('dataset_row_index');
+    const actualValueInput = document.getElementById('actual_value_from_dataset');
 
     if (generateButton && form) {
         generateButton.addEventListener('click', function() {
@@ -242,6 +263,64 @@ document.addEventListener('DOMContentLoaded', function () {
                 .catch(error => {
                     console.error('Error fetching random inputs:', error);
                     alert('Could not fetch random inputs. Please check the console for errors and ensure the server is running correctly.');
+                });
+        });
+    }
+
+    if (loadDatasetRowButton && datasetRowIndexInput && form && actualValueInput) {
+        loadDatasetRowButton.addEventListener('click', function() {
+            const rowIndex = datasetRowIndexInput.value;
+            if (rowIndex === '' || rowIndex < 0 {% if dataset_row_count > 0 %}||
+                rowIndex >= {{ dataset_row_count }} {% endif %}) {
+                alert('Please enter a valid row index (0 to {{ dataset_row_count - 1 }}).');
+                datasetRowIndexInput.focus();
+                return;
+            }
+
+            fetch("{{ url_for('get_dataset_row', row_index=0) }}".replace('0', rowIndex))
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || ('Network response was not ok: ' + response.statusText)); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        console.error("Error loading dataset row: ", data.error);
+                        alert("Error loading dataset row: " + data.error);
+                        return;
+                    }
+                    for (const feature_name in data) {
+                        if (feature_name === 'actual_value_from_dataset') {
+                            actualValueInput.value = data[feature_name] !== null ? data[feature_name] : '';
+                            continue;
+                        }
+                        const field = form.elements[feature_name];
+                        if (field) {
+                            // For numeric fields that might come as numbers from backend, ensure they are set correctly
+                            if (field.type === 'number' && typeof data[feature_name] === 'number') {
+                                field.value = data[feature_name];
+                            } else {
+                                field.value = data[feature_name] !== null ? String(data[feature_name]) : '';
+                            }
+                            if (field.tagName === 'SELECT') {
+                                field.dispatchEvent(new Event('change'));
+                            }
+                        } else {
+                            // console.warn('Field not found for dataset row: ', feature_name);
+                        }
+                    }
+                    let message = 'Input fields populated with data from row ' + rowIndex + '.';
+                    if (data.actual_value_from_dataset !== undefined && data.actual_value_from_dataset !== null) {
+                        message += '\nActual outcome (Passed): ' + data.actual_value_from_dataset;
+                    } else {
+                        message += '\nActual outcome not available for this row.';
+                    }
+                    alert(message);
+                })
+                .catch(error => {
+                    console.error('Error fetching dataset row:', error);
+                    alert('Could not load data for row ' + rowIndex + '. ' + error.message);
                 });
         });
     }

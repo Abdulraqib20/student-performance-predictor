@@ -19,6 +19,17 @@ PASSWORD = "hayzed"
 # More robust path to the models directory
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(APP_ROOT, '..', 'models')
+DATASET_PATH = os.path.join(APP_ROOT, '..', 'data', 'student-data.csv') # Path to the dataset
+
+student_df = None
+try:
+    if os.path.exists(DATASET_PATH):
+        student_df = pd.read_csv(DATASET_PATH)
+        print(f"Successfully loaded dataset from {DATASET_PATH}. Shape: {student_df.shape}")
+    else:
+        print(f"Warning: Dataset file not found at {DATASET_PATH}")
+except Exception as e:
+    print(f"Error loading dataset: {e}")
 
 # Define all feature names based on student-data.csv (excluding 'passed')
 ALL_FEATURE_NAMES = [
@@ -187,13 +198,15 @@ def index():
     model_files = load_model_names()
     # Filter display names to only include loaded models
     active_model_display_names = {mf: MODEL_DISPLAY_NAMES.get(mf, mf.replace('.joblib','').replace('.pkl','').title()) for mf in model_files}
+    dataset_row_count = len(student_df) if student_df is not None else 0
     return render_template('index.html',
                            models=model_files,
                            model_display_names=active_model_display_names,
                            all_features=ALL_FEATURE_NAMES,
                            categorical_features_map=CATEGORICAL_FEATURES_MAP,
                            numerical_features=NUMERICAL_FEATURES,
-                           feature_descriptions=FEATURE_DESCRIPTIONS)
+                           feature_descriptions=FEATURE_DESCRIPTIONS,
+                           dataset_row_count=dataset_row_count)
 
 @app.route('/about')
 @login_required
@@ -254,12 +267,16 @@ def predict():
     if request.method == 'POST':
         try:
             selected_model_file = request.form.get('model')
+            actual_value_from_dataset = request.form.get('actual_value_from_dataset') # Get actual value if provided
+
             if not selected_model_file:
-                return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error='Please select a model.', preprocessing_warning=preprocessing_warning)
+                dataset_row_count = len(student_df) if student_df is not None else 0
+                return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error='Please select a model.', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
 
             model_path = os.path.join(MODEL_DIR, selected_model_file)
             if not os.path.exists(model_path) or selected_model_file not in MODEL_PERFORMANCE_METRICS:
-                return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Model file {selected_model_file} not found or no metrics available.', preprocessing_warning=preprocessing_warning)
+                dataset_row_count = len(student_df) if student_df is not None else 0
+                return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Model file {selected_model_file} not found or no metrics available.', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
 
             model = joblib.load(model_path)
             input_features = []
@@ -269,7 +286,8 @@ def predict():
                 value = request.form.get(feature_name)
                 raw_features_for_display[feature_name] = value
                 if value is None or value == '':
-                    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Please provide a value for all features. {feature_name.replace("_"," ").title()} is missing.', preprocessing_warning=preprocessing_warning)
+                    dataset_row_count = len(student_df) if student_df is not None else 0
+                    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Please provide a value for all features. {feature_name.replace("_"," ").title()} is missing.', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
                 try:
                     if feature_name in CATEGORICAL_FEATURES_MAP:
                         encoded_value = CATEGORICAL_FEATURES_MAP[feature_name].get(value)
@@ -279,7 +297,8 @@ def predict():
                     else:
                         input_features.append(float(value))
                 except ValueError as ve:
-                    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Invalid input for {feature_name.replace("_"," ").title()}: {str(ve)}', preprocessing_warning=preprocessing_warning)
+                    dataset_row_count = len(student_df) if student_df is not None else 0
+                    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Invalid input for {feature_name.replace("_"," ").title()}: {str(ve)}', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
 
             final_features = [np.array(input_features)]
             prediction_result = model.predict(final_features)
@@ -296,15 +315,18 @@ def predict():
                                raw_model_name=selected_model_file,
                                features_display=raw_features_for_display,
                                model_metrics=model_metrics,
-                               preprocessing_warning=preprocessing_warning)
+                               preprocessing_warning=preprocessing_warning,
+                               actual_value_from_dataset=actual_value_from_dataset)
 
         except Exception as e:
             print(f"Error during prediction: {e}")
             import traceback
             traceback.print_exc()
-            return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'An unexpected error occurred during prediction: {str(e)}', preprocessing_warning=preprocessing_warning)
+            dataset_row_count = len(student_df) if student_df is not None else 0
+            return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'An unexpected error occurred during prediction: {str(e)}', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
 
-    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, preprocessing_warning=preprocessing_warning)
+    dataset_row_count = len(student_df) if student_df is not None else 0
+    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
 
 @app.route('/generate_random_input')
 @login_required
@@ -326,6 +348,51 @@ def generate_random_input():
     except Exception as e:
         print(f"Error in /generate_random_input: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/get_dataset_row/<int:row_index>')
+@login_required
+def get_dataset_row(row_index):
+    if student_df is None:
+        return jsonify({"error": "Dataset not loaded."}), 500
+    if not 0 <= row_index < len(student_df):
+        return jsonify({"error": f"Row index out of bounds. Please select a row between 0 and {len(student_df) - 1}."}), 400
+
+    try:
+        row_data = student_df.iloc[row_index].copy() # Use .copy() to avoid SettingWithCopyWarning on potential modifications
+
+        # Convert numpy types to native Python types for JSON serialization
+        for col, value in row_data.items():
+            if isinstance(value, np.integer):
+                row_data[col] = int(value)
+            elif isinstance(value, np.floating):
+                row_data[col] = float(value)
+            elif isinstance(value, np.bool_):
+                 row_data[col] = bool(value)
+
+        # The target variable in student-data.csv is 'passed'
+        # We need to include this to be sent to the client, so it can be stored and sent back with predict.
+        # It's not an input feature itself for the model.
+        response_data = row_data.to_dict()
+
+        # Ensure all ALL_FEATURE_NAMES are present, even if some are not in the CSV (though they should be)
+        # And add the 'passed' column specifically for the actual value comparison
+        final_response = {}
+        for feature in ALL_FEATURE_NAMES:
+            final_response[feature] = response_data.get(feature)
+
+        if 'passed' in response_data: # This is the target variable
+            final_response['actual_value_from_dataset'] = response_data['passed']
+        else:
+            # This case should ideally not happen if 'passed' is always in your CSV
+            final_response['actual_value_from_dataset'] = None
+            print(f"Warning: 'passed' column not found in dataset row {row_index}")
+
+        return jsonify(final_response)
+    except Exception as e:
+        print(f"Error in /get_dataset_row for index {row_index}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "Failed to retrieve or process dataset row."}), 500
 
 # if __name__ == '__main__':
 #     # Ensure the app is run from the root directory or adjust path to data/models if needed
