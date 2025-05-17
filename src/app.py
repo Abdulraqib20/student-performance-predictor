@@ -6,6 +6,21 @@ import pandas as pd # Added for CSV parsing if needed later, not strictly used f
 import random # Added for random value generation
 from functools import wraps # Added for login_required decorator
 
+# Import preprocessing utilities
+import sys
+# Add project root to sys.path to locate the 'utils' module
+# Assuming app.py is in 'src/', so '..' goes to project root
+module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
+
+from utils.preprocessing import (
+    apply_label_encoders,
+    apply_standard_scaler,
+    load_preprocessor,
+    load_json_data
+)
+
 app = Flask(__name__)
 # It's crucial to set a secret key for session management.
 # In a real application, use a strong, randomly generated key and keep it secret.
@@ -20,6 +35,7 @@ PASSWORD = "hayzed"
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(APP_ROOT, '..', 'models')
 DATASET_PATH = os.path.join(APP_ROOT, '..', 'data', 'student-data.csv') # Path to the dataset
+PREPROCESSOR_DIR = os.path.join(APP_ROOT, '..', 'preprocessors')
 
 student_df = None
 try:
@@ -31,13 +47,26 @@ try:
 except Exception as e:
     print(f"Error loading dataset: {e}")
 
-# Define all feature names based on student-data.csv (excluding 'passed')
+# --- Feature Definitions (Used for form generation, descriptions, etc.) ---
 ALL_FEATURE_NAMES = [
     'school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu',
     'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime', 'failures',
     'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet',
     'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences'
 ]
+
+# This list MUST match the categorical columns processed with LabelEncoder in the notebook
+CATEGORICAL_FEATURE_NAMES_FOR_ENCODING = [
+    'school', 'sex', 'address', 'famsize', 'Pstatus',
+    'Mjob', 'Fjob', 'reason', 'guardian',
+    'schoolsup', 'famsup', 'paid', 'activities', 'nursery',
+    'higher', 'internet', 'romantic'
+]
+
+# Numerical features will be determined by 'numerical_columns_fitted.json'
+# This global will be populated by load_all_preprocessors_on_startup
+# Initial placeholder value: features not in categorical list
+NUMERICAL_FEATURES = [f for f in ALL_FEATURE_NAMES if f not in CATEGORICAL_FEATURE_NAMES_FOR_ENCODING]
 
 FEATURE_DESCRIPTIONS = {
     'school': "Student's school (GP or MS)",
@@ -68,54 +97,32 @@ FEATURE_DESCRIPTIONS = {
     'goout': "Going out with friends (1 - very low to 5 - very high)",
     'Dalc': "Workday alcohol consumption (1 - very low to 5 - very high)",
     'Walc': "Weekend alcohol consumption (1 - very low to 5 - very high)",
-    'health': "Current health status (1 - very bad to 5 - very good)",
+    'health': "Current health status (1-very bad to 5-very good)",
     'absences': "Number of school absences (0 to 93)"
 }
 
-# Define categorical features and their expected unique values (derived from CSV)
-# IMPORTANT: This manual encoding might differ from your notebook's LabelEncoder.
-# For production, save/load your encoders.
-CATEGORICAL_FEATURES_MAP = {
-    'school': {'GP': 0, 'MS': 1},
-    'sex': {'F': 0, 'M': 1},
-    'address': {'U': 0, 'R': 1},
-    'famsize': {'GT3': 0, 'LE3': 1}, # GT3: Greater than 3, LE3: Less or Equal to 3
-    'Pstatus': {'A': 0, 'T': 1},     # A: Apart, T: Together
-    'Mjob': {'at_home': 0, 'health': 1, 'other': 2, 'services': 3, 'teacher': 4},
-    'Fjob': {'at_home': 0, 'health': 1, 'other': 2, 'services': 3, 'teacher': 4},
-    'reason': {'course': 0, 'home': 1, 'other': 2, 'reputation': 3},
-    'guardian': {'father': 0, 'mother': 1, 'other': 2},
-    'schoolsup': {'no': 0, 'yes': 1}, # Consistent with typical LabelEncoder (no=0, yes=1)
-    'famsup': {'no': 0, 'yes': 1},
-    'paid': {'no': 0, 'yes': 1},
-    'activities': {'no': 0, 'yes': 1},
-    'nursery': {'no': 0, 'yes': 1},
-    'higher': {'no': 0, 'yes': 1}, # Assuming 'no' should be 0, 'yes' should be 1 for consistency
-    'internet': {'no': 0, 'yes': 1},
-    'romantic': {'no': 0, 'yes': 1}
+# For random input generation for categorical features
+SIMPLE_CATEGORICAL_VALUES_FOR_RANDOM_GEN = {
+    'school': ['GP', 'MS'], 'sex': ['F', 'M'], 'address': ['U', 'R'],
+    'famsize': ['LE3', 'GT3'], 'Pstatus': ['T', 'A'],
+    'Mjob': ['teacher', 'health', 'services', 'at_home', 'other'],
+    'Fjob': ['teacher', 'health', 'services', 'at_home', 'other'],
+    'reason': ['home', 'reputation', 'course', 'other'],
+    'guardian': ['mother', 'father', 'other'],
+    'schoolsup': ['yes', 'no'], 'famsup': ['yes', 'no'], 'paid': ['yes', 'no'],
+    'activities': ['yes', 'no'], 'nursery': ['yes', 'no'], 'higher': ['yes', 'no'],
+    'internet': ['yes', 'no'], 'romantic': ['yes', 'no']
 }
 
-# Numerical features are the ones not in CATEGORICAL_FEATURES_MAP keys
-NUMERICAL_FEATURES = [f for f in ALL_FEATURE_NAMES if f not in CATEGORICAL_FEATURES_MAP]
-
-# Helper for random generation
+# For random input generation for numerical features (min, max)
 FEATURE_RANGES = {
-    'age': (15, 22),
-    'Medu': (0, 4),
-    'Fedu': (0, 4),
-    'traveltime': (1, 4),
-    'studytime': (1, 4),
-    'failures': (0, 3), # User inputs 0,1,2,3. Model might treat 3 as '3 or more'.
-    'famrel': (1, 5),
-    'freetime': (1, 5),
-    'goout': (1, 5),
-    'Dalc': (1, 5),
-    'Walc': (1, 5),
-    'health': (1, 5),
-    'absences': (0, 93)
+    'age': (15, 22), 'Medu': (0, 4), 'Fedu': (0, 4), 'traveltime': (1, 4),
+    'studytime': (1, 4), 'failures': (0, 3), 'famrel': (1, 5),
+    'freetime': (1, 5), 'goout': (1, 5), 'Dalc': (1, 5), 'Walc': (1, 5),
+    'health': (1, 5), 'absences': (0, 93)
 }
 
-# Dictionary to map model filenames to more descriptive names
+# --- Model and Metrics Definitions ---
 MODEL_DISPLAY_NAMES = {
     'lr_model.joblib': 'Logistic Regression',
     'rf_model.joblib': 'Random Forest Classifier',
@@ -125,42 +132,113 @@ MODEL_DISPLAY_NAMES = {
 }
 
 MODEL_PERFORMANCE_METRICS = {
-    'lr_model.joblib': {
-        'name': 'Logistic Regression',
-        'Accuracy': '67.09%', 'F1 Score': '77.59%', 'Precision': '71.43%', 'Recall': '84.91%', 'ROC-AUC': '60.09%'
-    },
-    'xgb_model.joblib': {
-        'name': 'XGBoost Classifier',
-        'Accuracy': '70.89%', 'F1 Score': '80.00%', 'Precision': '74.19%', 'Recall': '86.79%', 'ROC-AUC': '64.15%'
-    },
-    'rf_model.joblib': {
-        'name': 'Random Forest Classifier',
-        'Accuracy': '68.35%', 'F1 Score': '78.63%', 'Precision': '71.88%', 'Recall': '86.79%', 'ROC-AUC': '64.04%'
-    },
-    'svm_model.joblib': {
-        'name': 'Support Vector Machine (SVM)',
-        'Accuracy': '68.35%', 'F1 Score': '79.34%', 'Precision': '70.59%', 'Recall': '90.57%', 'ROC-AUC': '61.39%'
-    },
-    'knn_model.joblib': {
-        'name': 'K-Nearest Neighbors (KNN)',
-        'Accuracy': '63.29%', 'F1 Score': '75.21%', 'Precision': '68.75%', 'Recall': '83.02%', 'ROC-AUC': '59.72%'
-    }
+    'lr_model.joblib': {'name': 'Logistic Regression', 'Accuracy': '67.09%', 'F1 Score': '77.59%', 'Precision': '71.43%', 'Recall': '84.91%', 'ROC-AUC': '60.09%'},
+    'xgb_model.joblib': {'name': 'XGBoost Classifier', 'Accuracy': '70.89%', 'F1 Score': '80.00%', 'Precision': '74.19%', 'Recall': '86.79%', 'ROC-AUC': '64.15%'},
+    'rf_model.joblib': {'name': 'Random Forest Classifier', 'Accuracy': '68.35%', 'F1 Score': '78.63%', 'Precision': '71.88%', 'Recall': '86.79%', 'ROC-AUC': '64.04%'},
+    'svm_model.joblib': {'name': 'Support Vector Machine (SVM)', 'Accuracy': '68.35%', 'F1 Score': '79.34%', 'Precision': '70.59%', 'Recall': '90.57%', 'ROC-AUC': '61.39%'},
+    'knn_model.joblib': {'name': 'K-Nearest Neighbors (KNN)', 'Accuracy': '63.29%', 'F1 Score': '75.21%', 'Precision': '68.75%', 'Recall': '83.02%', 'ROC-AUC': '59.72%'}
 }
 
-# Load model names
-def load_model_names():
-    models = []
-    if os.path.exists(MODEL_DIR) and os.path.isdir(MODEL_DIR):
-        for f_name in os.listdir(MODEL_DIR):
-            if f_name.endswith(('.pkl', '.joblib')) and f_name in MODEL_PERFORMANCE_METRICS: # Ensure only models with metrics are loaded
-                models.append(f_name)
-    else:
-        print(f"Warning: Model directory '{MODEL_DIR}' not found or is not a directory. CWD: {os.getcwd()}")
-    if not models:
-        print(f"Warning: No usable models found in {MODEL_DIR} that match MODEL_PERFORMANCE_METRICS keys.")
-    return models
+# --- Globals for Loaded Objects ---
+loaded_models = {}
+loaded_label_encoders = {} # Dict to store {col_name: LabelEncoder_object}
+loaded_standard_scaler = None
+fitted_numerical_cols = []    # List of numerical columns the scaler was FITTED on
+final_feature_order_from_training = [] # List of all feature columns in order model expects
+preprocessors_loaded_successfully = False
 
-# Login required decorator
+# --- Startup Loading Functions ---
+def load_all_preprocessors_on_startup():
+    global loaded_label_encoders, loaded_standard_scaler, fitted_numerical_cols, final_feature_order_from_training, preprocessors_loaded_successfully, NUMERICAL_FEATURES
+
+    any_critical_error = False
+    print("--- Loading Preprocessors ---")
+
+    # Load LabelEncoders
+    for col_name in CATEGORICAL_FEATURE_NAMES_FOR_ENCODING:
+        encoder_path = os.path.join(PREPROCESSOR_DIR, f"{col_name}_label_encoder.joblib")
+        encoder = load_preprocessor(encoder_path) # From utils.preprocessing
+        if encoder is None:
+            print(f"CRITICAL ERROR: Failed to load LabelEncoder for '{col_name}' from {encoder_path}.")
+            any_critical_error = True
+        else:
+            loaded_label_encoders[col_name] = encoder
+            # print(f"Successfully loaded LabelEncoder for '{col_name}'. Classes: {list(encoder.classes_)}")
+
+    # Load StandardScaler
+    scaler_path = os.path.join(PREPROCESSOR_DIR, "standard_scaler.joblib")
+    loaded_standard_scaler = load_preprocessor(scaler_path)
+    if loaded_standard_scaler is None:
+        print(f"CRITICAL ERROR: Failed to load StandardScaler from {scaler_path}.")
+        any_critical_error = True
+
+    # Load numerical columns list (the ones scaler was fitted on)
+    num_cols_path = os.path.join(PREPROCESSOR_DIR, "numerical_columns_fitted.json")
+    fitted_numerical_cols_temp = load_json_data(num_cols_path) # From utils.preprocessing
+    if fitted_numerical_cols_temp is None:
+        print(f"CRITICAL ERROR: Failed to load 'numerical_columns_fitted.json' from {num_cols_path}.")
+        any_critical_error = True
+    else:
+        # Ensure it's a list before extend or assignment
+        if isinstance(fitted_numerical_cols_temp, list):
+            fitted_numerical_cols.clear() # Clear before extending/assigning
+            fitted_numerical_cols.extend(fitted_numerical_cols_temp)
+            NUMERICAL_FEATURES = list(fitted_numerical_cols) # Update global for templates
+            # print(f"Successfully loaded numerical columns for scaler: {fitted_numerical_cols}")
+        else:
+            print(f"CRITICAL ERROR: 'numerical_columns_fitted.json' did not load as a list.")
+            any_critical_error = True
+
+    # Load final feature order
+    order_path = os.path.join(PREPROCESSOR_DIR, "final_feature_order.json")
+    final_order_temp = load_json_data(order_path)
+    if final_order_temp is None:
+        print(f"CRITICAL ERROR: Failed to load 'final_feature_order.json' from {order_path}.")
+        any_critical_error = True
+    else:
+        if isinstance(final_order_temp, list):
+            final_feature_order_from_training.clear()
+            final_feature_order_from_training.extend(final_order_temp)
+            # print(f"Successfully loaded final feature order: {final_feature_order_from_training}")
+        else:
+            print(f"CRITICAL ERROR: 'final_feature_order.json' did not load as a list.")
+            any_critical_error = True
+
+    if not any_critical_error and loaded_standard_scaler and fitted_numerical_cols and final_feature_order_from_training and len(loaded_label_encoders) == len(CATEGORICAL_FEATURE_NAMES_FOR_ENCODING):
+        preprocessors_loaded_successfully = True
+        print("--- All preprocessors seem to be loaded successfully. ---")
+    else:
+        preprocessors_loaded_successfully = False
+        print("--- CRITICAL: One or more preprocessors FAILED to load. Predictions will be unreliable or fail. ---")
+
+def load_all_models_on_startup():
+    global loaded_models
+    print("--- Loading Models ---")
+    if not (os.path.exists(MODEL_DIR) and os.path.isdir(MODEL_DIR)):
+        print(f"CRITICAL ERROR: Model directory '{MODEL_DIR}' not found. CWD: {os.getcwd()}")
+        return
+
+    for f_name in os.listdir(MODEL_DIR):
+        if f_name.endswith(('.pkl', '.joblib')) and f_name in MODEL_DISPLAY_NAMES: # Use MODEL_DISPLAY_NAMES as source of truth for expected models
+            model_path = os.path.join(MODEL_DIR, f_name)
+            try:
+                loaded_models[f_name] = joblib.load(model_path)
+                print(f"Successfully loaded model: {f_name}")
+            except Exception as e:
+                print(f"Error loading model {f_name} from {model_path}: {e}")
+        elif f_name.endswith(('.pkl', '.joblib')):
+             print(f"Warning: Model file {f_name} found but not listed in MODEL_DISPLAY_NAMES. Skipping.")
+
+    if not loaded_models:
+        print(f"--- CRITICAL WARNING: No models were successfully loaded from {MODEL_DIR}. Predictions will not work. ---")
+    else:
+        print(f"--- Successfully loaded {len(loaded_models)} models. ---")
+
+# --- Run Startup Loaders ---
+load_all_preprocessors_on_startup()
+load_all_models_on_startup()
+
+# --- Authentication & Routes ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -195,18 +273,30 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    model_files = load_model_names()
-    # Filter display names to only include loaded models
-    active_model_display_names = {mf: MODEL_DISPLAY_NAMES.get(mf, mf.replace('.joblib','').replace('.pkl','').title()) for mf in model_files}
     dataset_row_count = len(student_df) if student_df is not None else 0
+    model_load_error = None
+    if not loaded_models:
+        model_load_error = f"CRITICAL: No models could be loaded from '{MODEL_DIR}'. Predictions are disabled."
+
+    preprocessor_load_error = None
+    if not preprocessors_loaded_successfully:
+        preprocessor_load_error = "CRITICAL: One or more essential preprocessors (encoders/scaler/column lists) failed to load. Predictions will be inaccurate or fail. Check server logs."
+
+    # For the template, we need a way to know which features are categorical for dropdowns.
+    # We use CATEGORICAL_FEATURE_NAMES_FOR_ENCODING for this.
+    # NUMERICAL_FEATURES is now correctly populated from fitted_numerical_cols.
     return render_template('index.html',
-                           models=model_files,
-                           model_display_names=active_model_display_names,
                            all_features=ALL_FEATURE_NAMES,
-                           categorical_features_map=CATEGORICAL_FEATURES_MAP,
+                           # Pass the list of categorical feature names for the template to identify them
+                           categorical_feature_names=CATEGORICAL_FEATURE_NAMES_FOR_ENCODING,
+                           # numerical_features is now correctly populated from fitted_numerical_cols by load_all_preprocessors_on_startup
                            numerical_features=NUMERICAL_FEATURES,
                            feature_descriptions=FEATURE_DESCRIPTIONS,
-                           dataset_row_count=dataset_row_count)
+                           # For categorical dropdowns, provide the simple string values for options
+                           simple_categorical_values=SIMPLE_CATEGORICAL_VALUES_FOR_RANDOM_GEN,
+                           dataset_row_count=dataset_row_count,
+                           model_load_error=model_load_error,
+                           preprocessor_load_error=preprocessor_load_error) # Pass preprocessor error
 
 @app.route('/about')
 @login_required
@@ -256,77 +346,192 @@ def about():
 @app.route('/predict', methods=['POST'])
 @login_required
 def predict():
-    model_files = load_model_names()
-    active_model_display_names = {mf: MODEL_DISPLAY_NAMES.get(mf, mf.replace('.joblib','').replace('.pkl','').title()) for mf in model_files}
-    preprocessing_warning = (
-        "Note: Numerical features are not scaled and categorical encoding is done manually. "
-        "This may affect prediction accuracy. For best results, the original preprocessing pipeline "
-        "(including fitted scalers and encoders from your notebook) should be used."
-    )
+    if not loaded_models:
+        flash("No models are loaded. Cannot make predictions.", "danger")
+        return redirect(url_for('index'))
+    if not preprocessors_loaded_successfully:
+        flash("Critical preprocessor components are missing. Predictions cannot be made reliably. Please check server logs.", "danger")
+        return redirect(url_for('index'))
+
+    preprocessing_status_message = "Preprocessing will be applied using loaded encoders and scaler."
+    if not preprocessors_loaded_successfully: # Should be caught above, but defensive
+        preprocessing_status_message = "WARNING: Preprocessing may be incomplete due to loading errors. Results may be inaccurate."
 
     if request.method == 'POST':
-        try:
-            selected_model_file = request.form.get('model')
-            actual_value_from_dataset = request.form.get('actual_value_from_dataset') # Get actual value if provided
+        raw_input_data = {}
+        raw_features_for_display = {} # Keep this for result.html
+        actual_value_from_dataset = request.form.get('actual_value_from_dataset')
 
-            if not selected_model_file:
-                dataset_row_count = len(student_df) if student_df is not None else 0
-                return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error='Please select a model.', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
+        # 1. Collect and Validate Inputs
+        for feature_name in ALL_FEATURE_NAMES:
+            value = request.form.get(feature_name)
+            raw_features_for_display[feature_name] = value # For display on result page
+            if value is None or value == '':
+                flash(f'Please provide a value for all features. {feature_name.replace("_"," ").title()} is missing.', 'warning')
+                # Simplified redirect for input errors to avoid re-rendering index with complex state here
+                return redirect(url_for('index')) # User will lose current inputs, consider JS validation on client-side
+            raw_input_data[feature_name] = value
 
-            model_path = os.path.join(MODEL_DIR, selected_model_file)
-            if not os.path.exists(model_path) or selected_model_file not in MODEL_PERFORMANCE_METRICS:
-                dataset_row_count = len(student_df) if student_df is not None else 0
-                return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Model file {selected_model_file} not found or no metrics available.', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
+        # 2. Create DataFrame from input
+        input_df = pd.DataFrame([raw_input_data])
 
-            model = joblib.load(model_path)
-            input_features = []
-            raw_features_for_display = {}
-
-            for feature_name in ALL_FEATURE_NAMES:
-                value = request.form.get(feature_name)
-                raw_features_for_display[feature_name] = value
-                if value is None or value == '':
-                    dataset_row_count = len(student_df) if student_df is not None else 0
-                    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Please provide a value for all features. {feature_name.replace("_"," ").title()} is missing.', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
+        # 3. Convert column types for DataFrame before preprocessing
+        # Numerical columns (use fitted_numerical_cols loaded from JSON)
+        for col in fitted_numerical_cols:
+            if col in input_df.columns:
                 try:
-                    if feature_name in CATEGORICAL_FEATURES_MAP:
-                        encoded_value = CATEGORICAL_FEATURES_MAP[feature_name].get(value)
-                        if encoded_value is None:
-                            raise ValueError(f"Invalid value '{value}' for categorical feature '{feature_name.replace('_',' ').title()}'. Check mapping.")
-                        input_features.append(encoded_value)
-                    else:
-                        input_features.append(float(value))
-                except ValueError as ve:
-                    dataset_row_count = len(student_df) if student_df is not None else 0
-                    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'Invalid input for {feature_name.replace("_"," ").title()}: {str(ve)}', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
+                    input_df[col] = pd.to_numeric(input_df[col])
+                except ValueError:
+                    flash(f"Invalid value for numerical feature '{col}': '{input_df[col].iloc[0]}'. Please enter a number.", 'danger')
+                    return redirect(url_for('index'))
 
-            final_features = [np.array(input_features)]
-            prediction_result = model.predict(final_features)
-            predicted_pass_status = "Pass" if prediction_result[0] == 1 else "Fail"
-            if isinstance(prediction_result[0], str):
-                 predicted_pass_status = prediction_result[0].title()
+        # Categorical columns should already be strings/objects, which is fine for LabelEncoder.transform
 
-            selected_model_display_name = MODEL_DISPLAY_NAMES.get(selected_model_file, selected_model_file)
-            model_metrics = MODEL_PERFORMANCE_METRICS.get(selected_model_file)
+        # 4. Apply Label Encoders
+        # CATEGORICAL_FEATURE_NAMES_FOR_ENCODING defines which columns to encode
+        processed_df = apply_label_encoders(
+            input_df.copy(), # Pass a copy
+            categorical_cols=CATEGORICAL_FEATURE_NAMES_FOR_ENCODING,
+            preprocessor_dir=PREPROCESSOR_DIR, # For loading if not pre-loaded
+            mode='transform',
+            encoders_dict=loaded_label_encoders # Pass pre-loaded encoders
+        )
+        if processed_df is None:
+            flash("Error during categorical data encoding. An invalid value might have been provided for a dropdown. Check inputs.", "danger")
+            return redirect(url_for('index'))
 
-            return render_template('result.html',
-                               prediction=predicted_pass_status,
-                               model_name=selected_model_display_name,
-                               raw_model_name=selected_model_file,
+        # 5. Apply Standard Scaler
+        # fitted_numerical_cols has the list of columns the scaler was FITTED on, in correct order
+        processed_df = apply_standard_scaler(
+            processed_df, # Use output from label encoding
+            numerical_cols=fitted_numerical_cols,
+            preprocessor_dir=PREPROCESSOR_DIR, # For loading if not pre-loaded
+            mode='transform',
+            scaler_object=loaded_standard_scaler # Pass pre-loaded scaler
+        )
+        if processed_df is None:
+            flash("Error during numerical data scaling. Please check inputs.", "danger")
+            return redirect(url_for('index'))
+
+        # 6. Reorder Columns to match training order
+        try:
+            if not final_feature_order_from_training:
+                 flash("Internal Server Error: Final feature order for model prediction is not loaded.", "danger")
+                 return redirect(url_for('index'))
+            processed_df = processed_df[final_feature_order_from_training]
+        except KeyError as e:
+            print(f"CRITICAL KeyError during column reordering: {e}. This means 'final_feature_order.json' "
+                  f"does not match the columns in the processed DataFrame. "
+                  f"Processed DF columns: {processed_df.columns.tolist()}. Expected order: {final_feature_order_from_training}")
+            flash(f"Internal error: Feature mismatch after preprocessing. Model prediction cannot proceed. (Details: {str(e)})", "danger")
+            return redirect(url_for('index'))
+        except Exception as e_reorder:
+            print(f"CRITICAL Exception during column reordering: {e_reorder}.")
+            flash(f"Internal error during feature preparation: {str(e_reorder)}", "danger")
+            return redirect(url_for('index'))
+
+
+        # 7. Convert to NumPy array for prediction
+        final_features_array = processed_df.to_numpy() # .reshape(1, -1) might not be needed if df is single row
+        if final_features_array.ndim == 1: # Ensure it's 2D for scikit-learn
+            final_features_array = final_features_array.reshape(1, -1)
+
+        # Check feature count against one of the models (optional sanity check)
+        # Example: first_model_key = next(iter(loaded_models))
+        # if loaded_models[first_model_key].n_features_in_ != final_features_array.shape[1]:
+        #     flash(f"Feature count mismatch. Model expects {loaded_models[first_model_key].n_features_in_}, got {final_features_array.shape[1]}", "danger")
+        #     return redirect(url_for('index'))
+
+
+        # --- Prediction Loop (largely unchanged) ---
+        all_predictions_data = []
+        for model_filename, model_object in loaded_models.items():
+            display_name = MODEL_DISPLAY_NAMES.get(model_filename, model_filename.replace('.joblib','').replace('.pkl','').title())
+            model_metrics = MODEL_PERFORMANCE_METRICS.get(model_filename)
+            prediction_label = "Error"
+            prob_pass = None
+            prob_fail = None
+
+            try:
+                if hasattr(model_object, 'predict_proba') and callable(model_object.predict_proba):
+                    probabilities = model_object.predict_proba(final_features_array)
+                    class_labels = getattr(model_object, 'classes_', [0, 1])
+                    idx_pass = 1
+                    idx_fail = 0
+
+                    try:
+                        # Assuming target 'passed' was encoded as 0 (no/fail) and 1 (yes/pass) in the notebook.
+                        # And that model.classes_ reflects this, e.g. [0, 1]
+                        # And predict_proba columns correspond to these sorted classes.
+                        target_encoder_path = os.path.join(PREPROCESSOR_DIR, "passed_label_encoder.joblib")
+                        le_passed = load_preprocessor(target_encoder_path)
+
+                        if le_passed:
+                            pass_label_numeric = le_passed.transform(['yes'])[0] # Assuming 'yes' means pass
+                            # fail_label_numeric = le_passed.transform(['no'])[0]
+
+                            # Find index of 'pass' in model's classes
+                            list_class_labels = list(class_labels) # Convert to list for index()
+                            if pass_label_numeric in list_class_labels:
+                                idx_pass = list_class_labels.index(pass_label_numeric)
+                                idx_fail = 1 - idx_pass # Assuming binary classification
+                            else: # Fallback if 'yes' transformed value not in model.classes_
+                                print(f"Warning: 'yes' ({pass_label_numeric}) not in model {display_name} classes_ {class_labels}. Using default 0/1 indexing.")
+                                # Default idx_pass=1, idx_fail=0 might still be correct if classes are [0,1] and 1 means pass
+                        else: # Fallback if target encoder not found
+                             print(f"Warning: passed_label_encoder.joblib not found. Using default 0/1 indexing for Pass/Fail probabilities for model {display_name}.")
+                             # Default idx_pass=1, idx_fail=0 assumes class 1 is Pass.
+
+                        prob_pass = probabilities[0][idx_pass]
+                        prob_fail = probabilities[0][idx_fail]
+                        predicted_class_index = np.argmax(probabilities[0])
+                        prediction_label = "Pass" if predicted_class_index == idx_pass else "Fail"
+
+                    except ValueError as ve_classes: # e.g. if a class label is not found
+                        print(f"Warning: Could not reliably determine Pass/Fail class indices for {display_name} (classes: {class_labels}): {ve_classes}. Falling back to default 0/1 indexing.")
+                        prob_pass = probabilities[0][1] # Default: Class 1 probability for "Pass"
+                        prob_fail = probabilities[0][0] # Default: Class 0 probability for "Fail"
+                        prediction_label = "Pass" if np.argmax(probabilities[0]) == 1 else "Fail"
+                else:
+                    prediction_result = model_object.predict(final_features_array)
+                    # Ensure consistent "Pass"/"Fail" label
+                    # Assuming 1 from predict() means "Pass" after target encoding in notebook
+                    target_encoder_path = os.path.join(PREPROCESSOR_DIR, "passed_label_encoder.joblib")
+                    le_passed = load_preprocessor(target_encoder_path)
+                    pass_numeric_val = 1 # Default assumption
+                    if le_passed:
+                        try:
+                            pass_numeric_val = le_passed.transform(['yes'])[0]
+                        except Exception:
+                            print("Could not transform 'yes' with loaded target encoder, defaulting pass_numeric_val to 1")
+
+                    prediction_label = "Pass" if prediction_result[0] == pass_numeric_val else "Fail"
+                    print(f"Note: Model {display_name} does not have predict_proba. Using predict(). Label: {prediction_label} from raw: {prediction_result[0]}")
+
+
+                all_predictions_data.append({
+                    'name': display_name, 'raw_name': model_filename, 'prediction': prediction_label,
+                    'prob_pass': prob_pass * 100 if prob_pass is not None else None,
+                    'prob_fail': prob_fail * 100 if prob_fail is not None else None,
+                    'metrics': model_metrics
+                })
+            except Exception as model_pred_e:
+                print(f"Error predicting with model {model_filename}: {model_pred_e}")
+                import traceback
+                traceback.print_exc()
+                all_predictions_data.append({
+                    'name': display_name, 'raw_name': model_filename, 'prediction': 'Error during prediction',
+                    'prob_pass': None, 'prob_fail': None, 'metrics': model_metrics, 'error': str(model_pred_e)
+                })
+
+        return render_template('result.html',
+                               predictions=all_predictions_data,
                                features_display=raw_features_for_display,
-                               model_metrics=model_metrics,
-                               preprocessing_warning=preprocessing_warning,
+                               preprocessing_status=preprocessing_status_message, # Updated from preprocessing_warning
                                actual_value_from_dataset=actual_value_from_dataset)
 
-        except Exception as e:
-            print(f"Error during prediction: {e}")
-            import traceback
-            traceback.print_exc()
-            dataset_row_count = len(student_df) if student_df is not None else 0
-            return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, error=f'An unexpected error occurred during prediction: {str(e)}', preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
-
-    dataset_row_count = len(student_df) if student_df is not None else 0
-    return render_template('index.html', models=model_files, model_display_names=active_model_display_names, all_features=ALL_FEATURE_NAMES, categorical_features_map=CATEGORICAL_FEATURES_MAP, numerical_features=NUMERICAL_FEATURES, feature_descriptions=FEATURE_DESCRIPTIONS, preprocessing_warning=preprocessing_warning, dataset_row_count=dataset_row_count)
+    # Fallback for GET or other methods to /predict
+    return redirect(url_for('index'))
 
 @app.route('/generate_random_input')
 @login_required
@@ -334,15 +539,21 @@ def generate_random_input():
     random_inputs = {}
     try:
         for feature_name in ALL_FEATURE_NAMES:
-            if feature_name in CATEGORICAL_FEATURES_MAP:
-                random_inputs[feature_name] = random.choice(list(CATEGORICAL_FEATURES_MAP[feature_name].keys()))
-            elif feature_name in FEATURE_RANGES:
+            if feature_name in CATEGORICAL_FEATURE_NAMES_FOR_ENCODING: # Use this list
+                # Choose from predefined simple values for user-facing categories
+                random_inputs[feature_name] = random.choice(SIMPLE_CATEGORICAL_VALUES_FOR_RANDOM_GEN.get(feature_name, ["N/A"]))
+            elif feature_name in FEATURE_RANGES: # Numerical features
                 min_val, max_val = FEATURE_RANGES[feature_name]
-                if isinstance(min_val, float) or isinstance(max_val, float):
-                    random_inputs[feature_name] = round(random.uniform(min_val, max_val), 2)
-                else:
+                if isinstance(min_val, float) or isinstance(max_val, float) or feature_name == 'absences': # absences can be int
+                     # For simplicity, make all numerical randoms integers if min/max are int, except specific cases
+                    if feature_name in ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences']:
+                         random_inputs[feature_name] = random.randint(int(min_val), int(max_val))
+                    else: # If any other numerical, allow float if range suggests
+                         random_inputs[feature_name] = round(random.uniform(min_val, max_val), 2)
+                else: # Default for int ranges
                     random_inputs[feature_name] = random.randint(min_val, max_val)
-            else: # Should not happen if FEATURE_RANGES is comprehensive
+
+            else: # Should not happen if all features are covered
                 random_inputs[feature_name] = 0
         return jsonify(random_inputs)
     except Exception as e:

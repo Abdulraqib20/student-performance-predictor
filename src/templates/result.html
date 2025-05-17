@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Prediction Result - Student Performance Predictor{% endblock %}
+{% block title %}Prediction Results - Student Performance Predictor{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10 col-md-11">
         <div class="card shadow-sm border-light mb-5">
             <div class="card-header text-center py-4">
-                <h2 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Prediction Result</h2>
+                <h2 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Prediction Results</h2>
             </div>
             <div class="card-body p-4 p-md-5">
                 {% if preprocessing_warning %}
@@ -16,89 +16,107 @@
                     </div>
                 {% endif %}
 
-                <div class="text-center mb-4">
-                    <h3 class="mb-3 fw-normal">Predicted Outcome</h3>
-                    {% if prediction == "Pass" %}
-                        <div class="alert alert-success py-3">
-                            <span class="display-4 text-success"><i class="fas fa-user-check me-2"></i>PASS</span>
-                            <p class="lead mt-2 mb-0">The model predicts the student will likely <strong>pass</strong> the course.</p>
-                        </div>
-                    {% elif prediction == "Fail" %}
-                        <div class="alert alert-danger py-3">
-                            <span class="display-4 text-danger"><i class="fas fa-user-times me-2"></i>FAIL</span>
-                            <p class="lead mt-2 mb-0">The model predicts the student is at risk of <strong>failing</strong> the course.</p>
-                        </div>
-                    {% else %}
-                        <div class="alert alert-secondary py-3">
-                             <h1 class="display-5 my-2"><strong>{{ prediction }}</strong></h1>
-                        </div>
-                    {% endif %}
+                <h3 class="text-center mb-4 fw-normal">Model Predictions</h3>
+                {% if predictions %}
+                    <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
+                        {% for pred_data in predictions %}
+                            <div class="col">
+                                <div class="card h-100 shadow-sm border-light">
+                                    <div class="card-header {% if pred_data.prediction == 'Pass' %}bg-success-subtle{% elif pred_data.prediction == 'Fail' %}bg-danger-subtle{% else %}bg-secondary-subtle{% endif %}">
+                                        <h5 class="mb-0 {% if pred_data.prediction == 'Pass' %}text-success-emphasis{% elif pred_data.prediction == 'Fail' %}text-danger-emphasis{% else %}text-secondary-emphasis{% endif %}">
+                                            <i class="fas fa-brain me-2"></i>{{ pred_data.name }}
+                                        </h5>
+                                        {% if pred_data.raw_name %}
+                                        <small class="text-muted d-block">{{ pred_data.raw_name }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-body">
+                                        <h4 class="card-title text-center mb-3">
+                                            {% if pred_data.prediction == "Pass" %}
+                                                <span class="badge bg-success-light text-success-emphasis p-2 fs-5"><i class="fas fa-user-check me-2"></i>PASS</span>
+                                            {% elif pred_data.prediction == "Fail" %}
+                                                <span class="badge bg-danger-light text-danger-emphasis p-2 fs-5"><i class="fas fa-user-times me-2"></i>FAIL</span>
+                                            {% elif pred_data.prediction == "Error during prediction" %}
+                                                <span class="badge bg-warning-light text-warning-emphasis p-2 fs-5"><i class="fas fa-exclamation-triangle me-2"></i>ERROR</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary-light text-secondary-emphasis p-2 fs-5"><i class="fas fa-question-circle me-2"></i>{{ pred_data.prediction }}</span>
+                                            {% endif %}
+                                        </h4>
 
-                    {% if actual_value_from_dataset is not none and actual_value_from_dataset != '' %}
-                        <h3 class="mt-4 mb-2 fw-normal">Actual Outcome (from Dataset)</h3>
-                        {% if actual_value_from_dataset|lower == 'yes' or actual_value_from_dataset == 1 %}
-                            <div class="alert alert-info py-3">
-                                <span class="display-5 text-info"><i class="fas fa-check-circle me-2"></i>ACTUAL: PASS</span>
-                                <p class="lead mt-2 mb-0">The dataset indicates the student <strong>passed</strong>.</p>
-                            </div>
-                        {% elif actual_value_from_dataset|lower == 'no' or actual_value_from_dataset == 0 %}
-                            <div class="alert alert-warning py-3">
-                                <span class="display-5 text-warning"><i class="fas fa-times-circle me-2"></i>ACTUAL: FAIL</span>
-                                <p class="lead mt-2 mb-0">The dataset indicates the student <strong>failed</strong>.</p>
-                            </div>
-                        {% else %}
-                             <div class="alert alert-secondary py-3">
-                                <span class="display-5 text-secondary"><i class="fas fa-question-circle me-2"></i>ACTUAL: {{ actual_value_from_dataset | title }}</span>
-                                <p class="lead mt-2 mb-0">Actual outcome from dataset: <strong>{{ actual_value_from_dataset | title }}</strong>.</p>
-                            </div>
-                        {% endif %}
-                    {% endif %}
-                </div>
-
-                <div class="row g-4">
-                    <div class="col-lg-5 mb-4 mb-lg-0">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-header">
-                                <h5 class="mb-0 text-primary"><i class="fas fa-cogs me-2"></i>Model Information</h5>
-                            </div>
-                            <div class="card-body">
-                                <p><strong><i class="fas fa-brain me-2"></i>Model Used:</strong><br>{{ model_name }}</p>
-                                <p class="mb-0"><small class="text-muted"><i class="fas fa-file-code me-2"></i>Identifier: {{ raw_model_name }}</small></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-7">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-header">
-                                <h5 class="mb-0 text-primary"><i class="fas fa-tachometer-alt me-2"></i>Model Performance Metrics</h5>
-                            </div>
-                            <div class="card-body" style="font-size: 0.9rem;">
-                                {% if model_metrics %}
-                                    {% for metric, value in model_metrics.items() %}
-                                        {% if metric != 'name' %}
-                                            <div class="mb-2 pt-1">
-                                                <div class="d-flex justify-content-between">
-                                                    <span class="metric-label">{{ metric | replace('_',' ') }}:</span>
-                                                    <span class="metric-value text-primary">{{ value }}</span>
-                                                </div>
-                                                {% set numeric_value = value.replace('%', '') | float %}
-                                                <div class="progress mt-1" style="height: 14px;">
-                                                    <div class="progress-bar progress-bar-striped bg-primary" role="progressbar" style="width: {{ numeric_value }}%;" aria-valuenow="{{ numeric_value }}" aria-valuemin="0" aria-valuemax="100">{{value}}</div>
+                                        {% if pred_data.prob_pass is not none and pred_data.prob_fail is not none %}
+                                            <div class="mb-3">
+                                                <p class="mb-1 small text-muted"><strong>Prediction Confidence:</strong></p>
+                                                <div class="progress" style="height: 25px; font-size: 0.8rem;">
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ pred_data.prob_pass }}%;" aria-valuenow="{{ pred_data.prob_pass }}" aria-valuemin="0" aria-valuemax="100">
+                                                        Pass: {{ pred_data.prob_pass | round(1) }}%
+                                                    </div>
+                                                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ pred_data.prob_fail }}%;" aria-valuenow="{{ pred_data.prob_fail }}" aria-valuemin="0" aria-valuemax="100">
+                                                        Fail: {{ pred_data.prob_fail | round(1) }}%
+                                                    </div>
                                                 </div>
                                             </div>
+                                        {% elif pred_data.prediction != "Error during prediction" and pred_data.prediction != "Error" %}
+                                             <p class="text-muted text-center small my-3"><em>Probability scores not available for this model.</em></p>
                                         {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    <p class="text-muted fst-italic">Performance metrics are not available for this model.</p>
-                                {% endif %}
+
+                                        {% if pred_data.error %}
+                                             <div class="alert alert-danger small p-2 mt-2"><strong>Encountered an issue:</strong> {{ pred_data.error }}</div>
+                                        {% endif %}
+
+                                        {% if pred_data.metrics %}
+                                            <h6 class="mt-4 mb-2 text-muted border-top pt-3"><i class="fas fa-tachometer-alt me-2"></i>Performance Snapshot:</h6>
+                                            <div style="font-size: 0.80rem;">
+                                            {% for metric, value in pred_data.metrics.items() %}
+                                                {% if metric != 'name' %}
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span>{{ metric | replace('_',' ') }}:</span>
+                                                    <span class="fw-bold text-primary">{{ value }}</span>
+                                                </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                            </div>
+                                        {% elif pred_data.prediction != "Error during prediction" and pred_data.prediction != "Error" %}
+                                            <p class="text-muted fst-italic small mt-3"><em>Performance metrics are not available for this model.</em></p>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-secondary text-center" role="alert">
+                        No prediction results available.
+                    </div>
+                {% endif %}
+
+                {% if actual_value_from_dataset is not none and actual_value_from_dataset != '' %}
+                    <div class="card my-4 shadow-sm border-light">
+                        <div class="card-header bg-info-subtle">
+                             <h4 class="mb-0 text-info-emphasis text-center"><i class="fas fa-clipboard-check me-2"></i>Actual Outcome (from Dataset)</h4>
+                        </div>
+                        <div class="card-body text-center">
+                        {% if actual_value_from_dataset|lower == 'yes' or actual_value_from_dataset == 1 or actual_value_from_dataset|lower == 'pass' %}
+                            <div class="alert alert-info py-3 d-inline-block">
+                                <span class="display-6 text-info"><i class="fas fa-check-circle me-2"></i>ACTUAL: PASS</span>
+                                <p class="lead mt-1 mb-0">The dataset indicates the student <strong>passed</strong>.</p>
+                            </div>
+                        {% elif actual_value_from_dataset|lower == 'no' or actual_value_from_dataset == 0 or actual_value_from_dataset|lower == 'fail' %}
+                            <div class="alert alert-warning py-3 d-inline-block">
+                                <span class="display-6 text-warning"><i class="fas fa-times-circle me-2"></i>ACTUAL: FAIL</span>
+                                <p class="lead mt-1 mb-0">The dataset indicates the student <strong>failed</strong>.</p>
+                            </div>
+                        {% else %}
+                             <div class="alert alert-secondary py-3 d-inline-block">
+                                <span class="display-6 text-secondary"><i class="fas fa-question-circle me-2"></i>ACTUAL: {{ actual_value_from_dataset | title }}</span>
+                                <p class="lead mt-1 mb-0">Actual outcome from dataset: <strong>{{ actual_value_from_dataset | title }}</strong>.</p>
+                            </div>
+                        {% endif %}
                         </div>
                     </div>
-                </div>
+                {% endif %}
 
-                <div class="card mt-4 shadow-sm">
-                    <div class="card-header">
+                <div class="card mt-4 shadow-sm border-light">
+                    <div class="card-header bg-light">
                         <h5 class="mb-0 text-primary"><i class="fas fa-user-edit me-2"></i>Input Features Provided</h5>
                     </div>
                     <div class="card-body">

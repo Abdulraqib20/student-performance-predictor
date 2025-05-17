@@ -49,6 +49,24 @@
                         </div>
                     </div>
                 {% endif %}
+                {% if model_load_error %}
+                    <div class="alert alert-danger d-flex align-items-center" role="alert">
+                        <i class="fas fa-hdd me-2"></i>
+                        <div>
+                            <h5 class="alert-heading mb-1">Critical Model Loading Error!</h5>
+                            <p class="mb-0">{{ model_load_error }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if preprocessor_load_error %}
+                    <div class="alert alert-danger d-flex align-items-center" role="alert">
+                        <i class="fas fa-cogs me-2"></i>
+                        <div>
+                            <h5 class="alert-heading mb-1">Critical Preprocessor Loading Error!</h5>
+                            <p class="mb-0">{{ preprocessor_load_error }}</p>
+                        </div>
+                    </div>
+                {% endif %}
                 {% if preprocessing_warning %}
                     <div class="alert alert-warning small" role="alert">
                         <i class="fas fa-triangle-exclamation me-2"></i><strong>Note on Preprocessing:</strong> {{ preprocessing_warning }}
@@ -57,39 +75,6 @@
 
                 <form method="POST" action="{{ url_for('predict') }}" id="predictionForm">
                     <input type="hidden" name="actual_value_from_dataset" id="actual_value_from_dataset" value="">
-
-                    <div class="row mb-4 align-items-end">
-                        <div class="col-md-6">
-                            <div class="p-3 bg-light border rounded">
-                                <label for="model" class="form-label"><i class="fas fa-cogs me-2"></i>Select Machine Learning Model:</label>
-                                <select name="model" id="model" class="form-select form-select-lg" required>
-                                    <option value="" selected disabled>Choose a predictive model...</option>
-                                    {% for model_file in models %}
-                                        <option value="{{ model_file }}">
-                                            {{ model_display_names.get(model_file, model_file.replace('.pkl', '').replace('.joblib', '') | title) }}
-                                        </option>
-                                    {% else %}
-                                        <option disabled>No models found. Please check configuration.</option>
-                                    {% endfor %}
-                                </select>
-                                <small class="form-text text-muted mt-1">Different models may yield different predictions and have varying performance.</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            {% if dataset_row_count > 0 %}
-                            <div class="p-3 bg-light border rounded">
-                                <label for="dataset_row_index" class="form-label"><i class="fas fa-database me-2"></i>Load Data from Dataset (Row 0 to {{ dataset_row_count - 1 }}):</label>
-                                <div class="input-group">
-                                    <input type="number" id="dataset_row_index" class="form-control" placeholder="Enter Row Index (0-{{ dataset_row_count - 1 }})" min="0" max="{{ dataset_row_count - 1 }}">
-                                    <button class="btn btn-outline-success" type="button" id="loadDatasetRowButton"><i class="fas fa-download me-1"></i> Load Row</button>
-                                </div>
-                                <small class="form-text text-muted mt-1">Select a row from the dataset to pre-fill inputs and compare with actual outcome.</small>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <hr class="my-4">
 
                     <ul class="nav nav-tabs nav-fill mb-4" id="featureTabs" role="tablist">
                         <li class="nav-item" role="presentation">
@@ -119,12 +104,14 @@
                                                         <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ feature_descriptions[feature_name] }}"></i>
                                                     {% endif %}
                                                 </label>
-                                                {% if feature_name in categorical_features_map %}
+                                                {% if feature_name in categorical_feature_names %}
                                                     <select name="{{ feature_name }}" id="{{ feature_name }}" class="form-select" required>
                                                         <option value="" selected disabled>Select {{ feature_name | title | replace('_',' ') }}</option>
-                                                        {% for key, val in categorical_features_map[feature_name].items() %}
-                                                            <option value="{{ key }}">{{ key | title }}</option>
-                                                        {% endfor %}
+                                                        {% if feature_name in simple_categorical_values %}
+                                                            {% for option_val in simple_categorical_values[feature_name] %}
+                                                                <option value="{{ option_val }}">{{ option_val | title }}</option>
+                                                            {% endfor %}
+                                                        {% endif %}
                                                     </select>
                                                 {% elif feature_name in numerical_features %}
                                                     <input type="number" step="any" name="{{ feature_name }}" id="{{ feature_name }}" class="form-control"
@@ -161,12 +148,14 @@
                                                       <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ feature_descriptions[feature_name] }}"></i>
                                                   {% endif %}
                                               </label>
-                                              {% if feature_name in categorical_features_map %}
+                                              {% if feature_name in categorical_feature_names %}
                                                   <select name="{{ feature_name }}" id="{{ feature_name }}" class="form-select" required>
                                                       <option value="" selected disabled>Select {{ feature_name | title | replace('_',' ') }}</option>
-                                                      {% for key, val in categorical_features_map[feature_name].items() %}
-                                                          <option value="{{ key }}">{{ key | title }}</option>
-                                                      {% endfor %}
+                                                      {% if feature_name in simple_categorical_values %}
+                                                          {% for option_val in simple_categorical_values[feature_name] %}
+                                                              <option value="{{ option_val }}">{{ option_val | title }}</option>
+                                                          {% endfor %}
+                                                      {% endif %}
                                                   </select>
                                               {% elif feature_name in numerical_features %}
                                                   <input type="number" step="any" name="{{ feature_name }}" id="{{ feature_name }}" class="form-control"
@@ -198,6 +187,30 @@
                             <button type="submit" class="btn btn-primary btn-lg w-100"><i class="fas fa-paper-plane me-2"></i>Predict Performance</button>
                         </div>
                     </div>
+
+                    {% if dataset_row_count > 0 %}
+                    <div class="row mt-3 pt-3 border-top">
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <h6 class="mb-0 me-3 text-primary"><i class="fas fa-table me-2"></i>Load From Dataset:</h6>
+                                <div class="input-group" style="max-width: 400px;">
+                                    <span class="input-group-text">Row #</span>
+                                    <input type="number" class="form-control" id="datasetRowInput" min="0" max="{{ dataset_row_count - 1 }}" placeholder="Enter row # (0-{{ dataset_row_count - 1 }})">
+                                    <button class="btn btn-outline-primary" type="button" id="loadDatasetRowButton">
+                                        <i class="fas fa-database me-1"></i>Load
+                                    </button>
+                                </div>
+                                <div class="ms-3">
+                                    <span class="badge bg-info" id="actualValueBadge" style="display: none;"></span>
+                                </div>
+                            </div>
+                            <div class="form-text small text-muted mt-1">
+                                Load feature values from your dataset ({{ dataset_row_count }} rows available).
+                                The actual outcome will be shown on the results page for comparison.
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </form>
             </div>
             <div class="card-footer text-center py-3 bg-light-subtle">
@@ -212,22 +225,15 @@
 {{ super() }} {# Include scripts from base.html if any #}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Tab functionality (Bootstrap 5 handles this automatically with data-bs-toggle, but ensure no conflicts)
-    // If manual control is needed for tabs, uncomment and adapt:
-    /*
-    const tabEl = document.querySelectorAll('button[data-bs-toggle="tab"]');
-    tabEl.forEach(tab => {
-        tab.addEventListener('shown.bs.tab', function (event) {
-            // console.log(event.target.id + ' is now active');
-        });
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
     });
-    */
 
     // Random Input Generator
     const form = document.getElementById('predictionForm');
     const generateButton = document.getElementById('generateRandomButton');
-    const loadDatasetRowButton = document.getElementById('loadDatasetRowButton');
-    const datasetRowIndexInput = document.getElementById('dataset_row_index');
     const actualValueInput = document.getElementById('actual_value_from_dataset');
 
     if (generateButton && form) {
@@ -245,6 +251,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         alert("Error generating random inputs: " + data.error);
                         return;
                     }
+
+                    // Clear any previously loaded actual value
+                    actualValueInput.value = '';
+                    const actualValueBadge = document.getElementById('actualValueBadge');
+                    if (actualValueBadge) {
+                        actualValueBadge.style.display = 'none';
+                        actualValueBadge.textContent = '';
+                    }
+
                     for (const feature_name in data) {
                         const field = form.elements[feature_name];
                         if (field) {
@@ -267,20 +282,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (loadDatasetRowButton && datasetRowIndexInput && form && actualValueInput) {
+    // Dataset Row Loader
+    const loadDatasetRowButton = document.getElementById('loadDatasetRowButton');
+    const datasetRowInput = document.getElementById('datasetRowInput');
+
+    if (loadDatasetRowButton && datasetRowInput) {
         loadDatasetRowButton.addEventListener('click', function() {
-            const rowIndex = datasetRowIndexInput.value;
-            if (rowIndex === '' || rowIndex < 0 {% if dataset_row_count > 0 %}||
-                rowIndex >= {{ dataset_row_count }} {% endif %}) {
-                alert('Please enter a valid row index (0 to {{ dataset_row_count - 1 }}).');
-                datasetRowIndexInput.focus();
+            const rowIndex = datasetRowInput.value;
+            if (!rowIndex || isNaN(parseInt(rowIndex))) {
+                alert('Please enter a valid row number.');
                 return;
             }
 
-            fetch("{{ url_for('get_dataset_row', row_index=0) }}".replace('0', rowIndex))
+            fetch(`{{ url_for('get_dataset_row', row_index=0) }}`.replace('0', rowIndex))
                 .then(response => {
                     if (!response.ok) {
-                        return response.json().then(err => { throw new Error(err.error || ('Network response was not ok: ' + response.statusText)); });
+                        throw new Error('Network response was not ok: ' + response.statusText);
                     }
                     return response.json();
                 })
@@ -290,37 +307,40 @@ document.addEventListener('DOMContentLoaded', function () {
                         alert("Error loading dataset row: " + data.error);
                         return;
                     }
-                    for (const feature_name in data) {
-                        if (feature_name === 'actual_value_from_dataset') {
-                            actualValueInput.value = data[feature_name] !== null ? data[feature_name] : '';
-                            continue;
+
+                    // Set actual value from dataset
+                    const actualValue = data.actual_value_from_dataset;
+                    if (actualValue) {
+                        actualValueInput.value = actualValue;
+
+                        // Show actual value in badge
+                        const actualValueBadge = document.getElementById('actualValueBadge');
+                        if (actualValueBadge) {
+                            actualValueBadge.textContent = `Actual: ${actualValue === 'yes' ? 'PASS' : actualValue === 'no' ? 'FAIL' : actualValue}`;
+                            actualValueBadge.style.display = 'inline-block';
                         }
+
+                        delete data.actual_value_from_dataset; // Remove so it doesn't get processed in the loop below
+                    }
+
+                    // Fill in form fields
+                    for (const feature_name in data) {
+                        if (feature_name === 'error') continue;
+
                         const field = form.elements[feature_name];
-                        if (field) {
-                            // For numeric fields that might come as numbers from backend, ensure they are set correctly
-                            if (field.type === 'number' && typeof data[feature_name] === 'number') {
-                                field.value = data[feature_name];
-                            } else {
-                                field.value = data[feature_name] !== null ? String(data[feature_name]) : '';
-                            }
+                        if (field && data[feature_name] !== null) {
+                            field.value = data[feature_name];
                             if (field.tagName === 'SELECT') {
                                 field.dispatchEvent(new Event('change'));
                             }
-                        } else {
-                            // console.warn('Field not found for dataset row: ', feature_name);
                         }
                     }
-                    let message = 'Input fields populated with data from row ' + rowIndex + '.';
-                    if (data.actual_value_from_dataset !== undefined && data.actual_value_from_dataset !== null) {
-                        message += '\nActual outcome (Passed): ' + data.actual_value_from_dataset;
-                    } else {
-                        message += '\nActual outcome not available for this row.';
-                    }
-                    alert(message);
+
+                    alert(`Dataset row ${rowIndex} loaded successfully!`);
                 })
                 .catch(error => {
-                    console.error('Error fetching dataset row:', error);
-                    alert('Could not load data for row ' + rowIndex + '. ' + error.message);
+                    console.error('Error loading dataset row:', error);
+                    alert(`Could not load dataset row ${rowIndex}. Please check the console for errors.`);
                 });
         });
     }
