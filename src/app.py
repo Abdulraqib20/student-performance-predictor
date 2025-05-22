@@ -570,8 +570,8 @@ def predict():
 
                 all_predictions_data.append({
                     'name': display_name, 'raw_name': model_filename, 'prediction': prediction_label,
-                    'prob_pass': prob_pass * 100 if prob_pass is not None else None,
-                    'prob_fail': prob_fail * 100 if prob_fail is not None else None,
+                    'prob_pass': float(prob_pass * 100) if prob_pass is not None else None,
+                    'prob_fail': float(prob_fail * 100) if prob_fail is not None else None,
                     'metrics': model_metrics
                 })
             except Exception as model_pred_e:
