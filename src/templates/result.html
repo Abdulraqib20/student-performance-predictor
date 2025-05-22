@@ -3,80 +3,340 @@
 {% block title %}Prediction Results - Student Performance Predictor{% endblock %}
 
 {% block content %}
+<style>
+    /* General Page & Typography */
+    body {
+        background-color: #f4f7f6; /* Softer page background */
+    }
+    .container.py-4 {
+        max-width: 1140px; /* Max width for main content */
+    }
+    .display-5.fw-bold.text-primary {
+        color: var(--bs-primary) !important; /* Ensure primary color is used */
+    }
+
+    /* General Card Styling */
+    .card {
+        border-radius: 0.75rem; /* Even softer edges */
+        border: none; /* Remove default card border, rely on shadow */
+        margin-bottom: 2rem !important; /* Consistent bottom margin */
+    }
+    .card-header {
+        border-bottom: none; /* Remove internal card header border */
+        background-color: transparent; /* Cleaner look, specific cards can override */
+        padding: 1.5rem;
+    }
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Prediction Cards Enhancements */
+    .prediction-overview-card .card-header{
+        background-color: var(--bs-light) !important;
+        border-radius: 0.75rem 0.75rem 0 0;
+    }
+    .prediction-card {
+        background-color: #fff;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .prediction-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+    .prediction-card .card-header h5 {
+        font-weight: 600; /* Bolder model name */
+    }
+    .prediction-card .badge.prediction-outcome {
+        font-size: 1rem; /* Larger Pass/Fail badge */
+        padding: 0.7em 1em;
+        width: 100px; /* Fixed width for alignment */
+        text-align: center;
+    }
+    .prediction-card .progress {
+        height: 30px; /* Taller progress bar */
+        font-size: 0.9rem;
+        border-radius: 0.5rem;
+    }
+    .prediction-card .progress-bar {
+        font-weight: 500;
+    }
+    .prediction-card .metrics-list span {
+        font-size: 0.9rem;
+    }
+    .prediction-card .metrics-list .metric-label {
+        color: var(--bs-secondary-text-emphasis);
+    }
+    .prediction-card .metrics-list .metric-value {
+        font-weight: 600;
+        color: var(--bs-primary-text-emphasis);
+    }
+
+    /* Actual Outcome Card */
+    .actual-outcome-card .card-header {
+        background-color: var(--bs-info-bg-subtle) !important;
+        color: var(--bs-info-text-emphasis) !important;
+        border-radius: 0.75rem 0.75rem 0 0;
+        border-bottom: 1px solid var(--bs-info-border-subtle);
+    }
+    .actual-outcome-card .card-body {
+         background-color: var(--bs-white);
+         border-radius: 0 0 0.75rem 0.75rem;
+    }
+    .actual-outcome-card .display-4 { /* Adjusted size */
+        font-size: 3.5rem;
+    }
+     .actual-outcome-card .lead {
+        font-size: 1.25rem;
+        font-weight: 400;
+        color: var(--bs-body-color);
+    }
+
+    /* AI Chat Card Enhancements */
+    .ai-chat-card .card-header {
+        background-color: var(--bs-primary) !important;
+        color: var(--bs-white) !important;
+        border-radius: 0.75rem 0.75rem 0 0;
+    }
+    .ai-chat-card .card-body {
+        background-color: #fff; /* White background for chat card body */
+        border-radius: 0 0 0.75rem 0.75rem;
+    }
+    .chat-container {
+        max-height: 400px;
+        overflow-y: auto;
+        background-color: var(--bs-tertiary-bg); /* Light background for chat area */
+        border: 1px solid var(--bs-border-color-translucent);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .chat-message {
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.75rem;
+        border-radius: 0.75rem;
+        max-width: 85%;
+        line-height: 1.5;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.075); /* Softer shadow */
+    }
+    .user-message {
+        background-color: var(--bs-primary);
+       
+        margin-left: auto;
+        border-bottom-right-radius: 0.2rem; /* Chat bubble tail */
+    }
+    .assistant-message {
+        background-color: var(--bs-light-bg-subtle);
+        color: var(--bs-body-color);
+        border: 1px solid var(--bs-border-color-translucent);
+        white-space: pre-wrap;
+        border-bottom-left-radius: 0.2rem; /* Chat bubble tail */
+    }
+    #aiTypingIndicator small {
+        font-style: italic;
+    }
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        margin: 0 2px;
+        background-color: var(--bs-primary-text-emphasis);
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out both;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1.0); }
+    }
+    .ai-chat-card .input-group .form-control {
+        border-right: none;
+    }
+    .ai-chat-card .input-group .btn-primary {
+        border-left: none;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+
+    /* Input Features Card */
+    .input-features-card .card-header {
+        background-color: var(--bs-secondary-bg-subtle) !important;
+        color: var(--bs-secondary-text-emphasis) !important;
+        border-radius: 0.75rem 0.75rem 0 0;
+        border-bottom: 1px solid var(--bs-secondary-border-subtle);
+    }
+    .input-features-card .card-body {
+         background-color: #fff;
+         border-radius: 0 0 0.75rem 0.75rem;
+    }
+    .input-features-card .input-group-text {
+        min-width: 150px; /* Wider labels */
+        font-weight: 500;
+        background-color: var(--bs-light) !important;
+        border-right: none;
+    }
+    .input-features-card .form-control[readonly] {
+        background-color: var(--bs-white) !important; /* Match card body */
+        border-left: none;
+    }
+
+    /* Action Buttons */
+    .action-buttons .btn {
+        padding: 0.75rem 1.5rem; /* Larger buttons */
+        font-size: 1.1rem;
+    }
+
+    .prediction-card {
+        transition: transform 0.2s ease;
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .prediction-card:hover {
+        transform: translateY(-2px);
+    }
+    .prediction-header {
+        background-color: var(--bs-primary-bg-subtle);
+        border-bottom: 1px solid var(--bs-light);
+    }
+    .prediction-pass {
+        color: var(--bs-success);
+    }
+    .prediction-fail {
+        color: var(--bs-danger);
+    }
+    .prediction-error {
+        color: var(--bs-warning);
+    }
+    .probability-bar {
+        height: 8px;
+        border-radius: 4px;
+        background-color: var(--bs-light);
+        overflow: hidden;
+    }
+    .probability-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    .probability-pass {
+        background-color: var(--bs-success);
+    }
+    .probability-fail {
+        background-color: var(--bs-danger);
+    }
+    .feature-value {
+        font-family: monospace;
+        background-color: var(--bs-light);
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+    }
+    .ai-interpretation {
+        background-color: var(--bs-light);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    .chat-message {
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border-radius: 0.5rem;
+    }
+    .user-message {
+        background-color: var(--bs-primary-bg-subtle);
+        margin-left: 2rem;
+    }
+    .ai-message {
+        background-color: var(--bs-light);
+        margin-right: 2rem;
+    }
+    .chat-input {
+        border-top: 1px solid var(--bs-light);
+        padding-top: 1rem;
+        margin-top: 1rem;
+    }
+    .loading-spinner {
+        display: none;
+    }
+</style>
+<div class="container py-4">
 <div class="row justify-content-center">
-    <div class="col-lg-10 col-md-11">
-        <div class="card shadow-sm border-light mb-5">
-            <div class="card-header text-center py-4">
-                <h2 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Prediction Results</h2>
+        <div class="col-lg-11 col-xl-10">
+            <div class="text-center mb-5">
+                <h1 class="display-4 fw-bold text-primary"><i class="fas fa-chart-line me-3"></i>Prediction Analysis</h1>
+                <p class="lead text-muted">Detailed breakdown of model predictions and AI-powered insights.</p>
             </div>
-            <div class="card-body p-4 p-md-5">
-                {% if preprocessing_warning %}
-                    <div class="alert alert-warning small mb-4" role="alert">
-                        <i class="fas fa-triangle-exclamation me-2"></i><strong>Note on Preprocessing:</strong> {{ preprocessing_warning }}
+
+            <div class="card shadow-sm prediction-overview-card">
+                <div class="card-header text-center py-3">
+                    <h2 class="mb-0 text-primary-emphasis"><i class="fas fa-cogs me-2"></i>Model Predictions Overview</h2>
+                </div>
+                <div class="card-body p-lg-5 p-4">
+                    {% if preprocessing_status %}
+                        <div class="alert alert-info small mb-4 d-flex align-items-center" role="alert">
+                            <i class="fas fa-info-circle me-2 fs-5"></i>
+                            <div><strong>Preprocessing Note:</strong> {{ preprocessing_status }}</div>
                     </div>
                 {% endif %}
 
-                <h3 class="text-center mb-4 fw-normal">Model Predictions</h3>
                 {% if predictions %}
-                    <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
+                        <div class="row row-cols-1 row-cols-lg-2 g-4 mb-4">
                         {% for pred_data in predictions %}
                             <div class="col">
-                                <div class="card h-100 shadow-sm border-light">
-                                    <div class="card-header {% if pred_data.prediction == 'Pass' %}bg-success-subtle{% elif pred_data.prediction == 'Fail' %}bg-danger-subtle{% else %}bg-secondary-subtle{% endif %}">
-                                        <h5 class="mb-0 {% if pred_data.prediction == 'Pass' %}text-success-emphasis{% elif pred_data.prediction == 'Fail' %}text-danger-emphasis{% else %}text-secondary-emphasis{% endif %}">
-                                            <i class="fas fa-brain me-2"></i>{{ pred_data.name }}
+                                    <div class="card h-100 shadow-sm prediction-card">
+                                        <div class="card-header {% if pred_data.prediction == 'Pass' %}bg-success-subtle{% elif pred_data.prediction == 'Fail' %}bg-danger-subtle{% else %}bg-secondary-subtle{% endif %} text-center py-3">
+                                            <h5 class="mb-1 {% if pred_data.prediction == 'Pass' %}text-success-emphasis{% elif pred_data.prediction == 'Fail' %}text-danger-emphasis{% else %}text-secondary-emphasis{% endif %}">
+                                                <i class="fas fa-robot me-2"></i>{{ pred_data.name }}
                                         </h5>
                                         {% if pred_data.raw_name %}
-                                        <small class="text-muted d-block">{{ pred_data.raw_name }}</small>
+                                            <small class="text-muted d-block"><em>{{ pred_data.raw_name }}</em></small>
                                         {% endif %}
                                     </div>
-                                    <div class="card-body">
-                                        <h4 class="card-title text-center mb-3">
+                                        <div class="card-body p-4">
+                                            <div class="text-center mb-3">
                                             {% if pred_data.prediction == "Pass" %}
-                                                <span class="badge bg-success-light text-success-emphasis p-2 fs-5"><i class="fas fa-user-check me-2"></i>PASS</span>
+                                                    <span class="badge prediction-outcome bg-success-light text-success-emphasis"><i class="fas fa-user-check me-2"></i>PASS</span>
                                             {% elif pred_data.prediction == "Fail" %}
-                                                <span class="badge bg-danger-light text-danger-emphasis p-2 fs-5"><i class="fas fa-user-times me-2"></i>FAIL</span>
+                                                    <span class="badge prediction-outcome bg-danger-light text-danger-emphasis"><i class="fas fa-user-times me-2"></i>FAIL</span>
                                             {% elif pred_data.prediction == "Error during prediction" %}
-                                                <span class="badge bg-warning-light text-warning-emphasis p-2 fs-5"><i class="fas fa-exclamation-triangle me-2"></i>ERROR</span>
+                                                    <span class="badge prediction-outcome bg-warning-light text-warning-emphasis"><i class="fas fa-exclamation-triangle me-2"></i>ERROR</span>
                                             {% else %}
-                                                <span class="badge bg-secondary-light text-secondary-emphasis p-2 fs-5"><i class="fas fa-question-circle me-2"></i>{{ pred_data.prediction }}</span>
+                                                    <span class="badge prediction-outcome bg-secondary-light text-secondary-emphasis"><i class="fas fa-question-circle me-2"></i>{{ pred_data.prediction }}</span>
                                             {% endif %}
-                                        </h4>
+                                            </div>
 
                                         {% if pred_data.prob_pass is not none and pred_data.prob_fail is not none %}
-                                            <div class="mb-3">
-                                                <p class="mb-1 small text-muted"><strong>Prediction Confidence:</strong></p>
-                                                <div class="progress" style="height: 25px; font-size: 0.8rem;">
+                                                <div class="mb-4">
+                                                    <p class="mb-2 small text-muted text-center"><strong>Prediction Confidence:</strong></p>
+                                                    <div class="progress">
                                                     <div class="progress-bar bg-success" role="progressbar" style="width: {{ pred_data.prob_pass }}%;" aria-valuenow="{{ pred_data.prob_pass }}" aria-valuemin="0" aria-valuemax="100">
                                                         Pass: {{ pred_data.prob_pass | round(1) }}%
                                                     </div>
-                                                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ pred_data.prob_fail }}%;" aria-valuenow="{{ pred_data.prob_fail }}" aria-valuemin="0" aria-valuemax="100">
+                                                        <div class "progress-bar bg-danger" role="progressbar" style="width: {{ pred_data.prob_fail }}%;" aria-valuenow="{{ pred_data.prob_fail }}" aria-valuemin="0" aria-valuemax="100">
                                                         Fail: {{ pred_data.prob_fail | round(1) }}%
                                                     </div>
                                                 </div>
                                             </div>
                                         {% elif pred_data.prediction != "Error during prediction" and pred_data.prediction != "Error" %}
-                                             <p class="text-muted text-center small my-3"><em>Probability scores not available for this model.</em></p>
+                                                 <p class="text-muted text-center small my-3 py-3"><em>Probability scores not available for this model.</em></p>
                                         {% endif %}
 
                                         {% if pred_data.error %}
-                                             <div class="alert alert-danger small p-2 mt-2"><strong>Encountered an issue:</strong> {{ pred_data.error }}</div>
+                                                 <div class="alert alert-warning small p-2 mt-2 text-center"><strong>Issue:</strong> {{ pred_data.error }}</div>
                                         {% endif %}
 
                                         {% if pred_data.metrics %}
-                                            <h6 class="mt-4 mb-2 text-muted border-top pt-3"><i class="fas fa-tachometer-alt me-2"></i>Performance Snapshot:</h6>
-                                            <div style="font-size: 0.80rem;">
+                                                <h6 class="mt-4 mb-3 text-muted text-center border-top pt-3"><i class="fas fa-tachometer-alt me-2"></i>Performance Snapshot</h6>
+                                                <div class="metrics-list">
                                             {% for metric, value in pred_data.metrics.items() %}
                                                 {% if metric != 'name' %}
                                                 <div class="d-flex justify-content-between mb-1">
-                                                    <span>{{ metric | replace('_',' ') }}:</span>
-                                                    <span class="fw-bold text-primary">{{ value }}</span>
+                                                        <span class="metric-label">{{ metric | replace('_',' ') }}:</span>
+                                                        <span class="metric-value">{{ value }}</span>
                                                 </div>
                                                 {% endif %}
                                             {% endfor %}
                                             </div>
                                         {% elif pred_data.prediction != "Error during prediction" and pred_data.prediction != "Error" %}
-                                            <p class="text-muted fst-italic small mt-3"><em>Performance metrics are not available for this model.</em></p>
+                                                <p class="text-muted fst-italic small mt-3 text-center"><em>Performance metrics are not available.</em></p>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -84,47 +344,88 @@
                         {% endfor %}
                     </div>
                 {% else %}
-                    <div class="alert alert-secondary text-center" role="alert">
-                        No prediction results available.
+                        <div class="alert alert-secondary text-center py-4" role="alert">
+                           <h5 class="mb-0"> <i class="fas fa-info-circle me-2"></i>No prediction results available.</h5>
                     </div>
                 {% endif %}
+                </div>
+            </div>
 
                 {% if actual_value_from_dataset is not none and actual_value_from_dataset != '' %}
-                    <div class="card my-4 shadow-sm border-light">
-                        <div class="card-header bg-info-subtle">
-                             <h4 class="mb-0 text-info-emphasis text-center"><i class="fas fa-clipboard-check me-2"></i>Actual Outcome (from Dataset)</h4>
+                <div class="card shadow-sm actual-outcome-card">
+                    <div class="card-header text-center py-3">
+                         <h2 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Actual Outcome (Dataset)</h2>
                         </div>
-                        <div class="card-body text-center">
+                    <div class="card-body text-center p-4">
                         {% if actual_value_from_dataset|lower == 'yes' or actual_value_from_dataset == 1 or actual_value_from_dataset|lower == 'pass' %}
-                            <div class="alert alert-info py-3 d-inline-block">
-                                <span class="display-6 text-info"><i class="fas fa-check-circle me-2"></i>ACTUAL: PASS</span>
-                                <p class="lead mt-1 mb-0">The dataset indicates the student <strong>passed</strong>.</p>
+                        <div class="py-3">
+                            <i class="fas fa-check-circle text-success display-4 mb-3"></i>
+                            <h3 class="text-success-emphasis fw-semibold">ACTUAL: PASS</h3>
+                            <p class="lead text-muted mt-1 mb-0">The dataset indicates the student <strong>passed</strong>.</p>
                             </div>
                         {% elif actual_value_from_dataset|lower == 'no' or actual_value_from_dataset == 0 or actual_value_from_dataset|lower == 'fail' %}
-                            <div class="alert alert-warning py-3 d-inline-block">
-                                <span class="display-6 text-warning"><i class="fas fa-times-circle me-2"></i>ACTUAL: FAIL</span>
-                                <p class="lead mt-1 mb-0">The dataset indicates the student <strong>failed</strong>.</p>
+                        <div class="py-3">
+                            <i class="fas fa-times-circle text-danger display-4 mb-3"></i>
+                            <h3 class="text-danger-emphasis fw-semibold">ACTUAL: FAIL</h3>
+                            <p class="lead text-muted mt-1 mb-0">The dataset indicates the student <strong>failed</strong>.</p>
                             </div>
                         {% else %}
-                             <div class="alert alert-secondary py-3 d-inline-block">
-                                <span class="display-6 text-secondary"><i class="fas fa-question-circle me-2"></i>ACTUAL: {{ actual_value_from_dataset | title }}</span>
-                                <p class="lead mt-1 mb-0">Actual outcome from dataset: <strong>{{ actual_value_from_dataset | title }}</strong>.</p>
+                         <div class="py-3">
+                            <i class="fas fa-question-circle text-secondary display-4 mb-3"></i>
+                            <h3 class="text-secondary-emphasis fw-semibold">ACTUAL: {{ actual_value_from_dataset | title }}</h3>
+                            <p class="lead text-muted mt-1 mb-0">Actual outcome from dataset: <strong>{{ actual_value_from_dataset | title }}</strong>.</p>
                             </div>
                         {% endif %}
                         </div>
                     </div>
                 {% endif %}
 
-                <div class="card mt-4 shadow-sm border-light">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0 text-primary"><i class="fas fa-user-edit me-2"></i>Input Features Provided</h5>
+            <!-- AI INTERPRETATION BUTTON & SECTION -->
+            <div class="text-center my-5">
+                <button id="getInterpretationBtn" class="btn btn-primary btn-lg">
+                    <i class="fas fa-brain me-2"></i>Get AI Interpretation
+                </button>
+                <div class="loading-spinner mt-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                    <div class="card-body">
-                        <div class="row gx-3 gy-2" style="font-size: 0.9rem;">
+                    <p class="text-muted mt-2">Generating interpretation...</p>
+                </div>
+            </div>
+            <div id="aiInterpretationSection" style="display:none;">
+                <div class="card shadow-sm ai-chat-card">
+                    <div class="card-header text-center py-3">
+                        <h2 class="mb-0"><i class="fas fa-comments me-2"></i>AI Explanation & Chat</h2>
+                    </div>
+                    <div class="card-body p-lg-5 p-4">
+                        <div id="chatMessagesContainer" class="chat-container mb-3"></div>
+                        <div id="aiTypingIndicator" class="mb-2 ms-1" style="display: none; align-items: center;">
+                            <small class="text-muted me-2"><i>AI is thinking</i></small>
+                            <div class="typing-indicator d-inline-block">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                        <div class="input-group input-group-lg">
+                            <input type="text" id="followUpInput" class="form-control shadow-sm" placeholder="Ask a follow-up question...">
+                            <button class="btn btn-primary shadow-sm" type="button" id="sendFollowUpButton"><i class="fas fa-paper-plane me-2"></i>Send</button>
+                        </div>
+                        <div class="form-text small text-muted mt-2 ms-1">
+                            You can ask the AI for clarifications or further details about its explanation.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm input-features-card">
+                <div class="card-header text-center py-3">
+                    <h2 class="mb-0"><i class="fas fa-user-edit me-2"></i>Input Features Provided</h2>
+                </div>
+                <div class="card-body p-lg-5 p-4">
+                    <div class="row gx-lg-5 gx-4 gy-3">
                             {% for key, val in features_display.items() %}
                                 <div class="col-md-6">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-light" style="min-width: 130px;">{{ key | title | replace('_',' ') }}</span>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text">{{ key | title | replace('_',' ') }}</span>
                                         <input type="text" class="form-control" value="{{ val }}" readonly disabled>
                                     </div>
                                 </div>
@@ -132,14 +433,142 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="card-footer text-center py-3">
-                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
-                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg px-4 me-sm-3"><i class="fas fa-redo-alt me-2"></i>Make Another Prediction</a>
-                    <a href="{{ url_for('about') }}" class="btn btn-outline-secondary btn-lg px-4"><i class="fas fa-info-circle me-2"></i>About This Project</a>
+
+            <div class="text-center py-5 action-buttons">
+                <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary shadow-sm"><i class="fas fa-redo-alt me-2"></i>Make Another Prediction</a>
+                    <a href="{{ url_for('about') }}" class="btn btn-outline-secondary shadow-sm"><i class="fas fa-info-circle me-2"></i>About This Project</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const getInterpretationBtn = document.getElementById('getInterpretationBtn');
+    const aiInterpretationSection = document.getElementById('aiInterpretationSection');
+    const chatMessagesContainer = document.getElementById('chatMessagesContainer');
+    const aiTypingIndicator = document.getElementById('aiTypingIndicator');
+    const loadingSpinner = document.querySelector('.loading-spinner');
+    const followUpInput = document.getElementById('followUpInput');
+    const sendFollowUpButton = document.getElementById('sendFollowUpButton');
+
+    let conversationHistory = [];
+
+    function appendMessage(text, sender) {
+        if (!chatMessagesContainer) return;
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('chat-message');
+        messageDiv.classList.add(sender === 'user' ? 'user-message' : 'assistant-message');
+        messageDiv.textContent = text;
+        chatMessagesContainer.appendChild(messageDiv);
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+
+    function showLoading(show) {
+        if (loadingSpinner) loadingSpinner.style.display = show ? 'block' : 'none';
+        if (getInterpretationBtn) getInterpretationBtn.disabled = show;
+    }
+
+    if (getInterpretationBtn) {
+        getInterpretationBtn.addEventListener('click', function() {
+            showLoading(true);
+            fetch('/get_ai_interpretation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                if (aiInterpretationSection) aiInterpretationSection.style.display = 'block';
+                if (getInterpretationBtn) getInterpretationBtn.style.display = 'none';
+                if (chatMessagesContainer) chatMessagesContainer.innerHTML = '';
+                appendMessage(data.interpretation, 'assistant');
+                conversationHistory = data.conversation_history || [];
+            })
+            .catch(error => {
+                showLoading(false);
+                alert('Error getting AI interpretation: ' + error);
+            });
+        });
+    }
+
+    async function handleFollowUp() {
+        if (!followUpInput || !sendFollowUpButton || !chatMessagesContainer) return;
+        const messageText = followUpInput.value.trim();
+        if (!messageText) return;
+
+        appendMessage(messageText, 'user');
+        followUpInput.value = '';
+        sendFollowUpButton.disabled = true;
+        followUpInput.disabled = true;
+        if(aiTypingIndicator) aiTypingIndicator.style.display = 'flex';
+
+        try {
+            const response = await fetch("{{ url_for('chat_follow_up') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: messageText
+                }),
+            });
+
+            if(aiTypingIndicator) aiTypingIndicator.style.display = 'none';
+            sendFollowUpButton.disabled = false;
+            followUpInput.disabled = false;
+            followUpInput.focus();
+
+            if (!response.ok) {
+                let errorMsg = "Could not get a response from the AI.";
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.error || errorMsg;
+                } catch (e) { }
+                appendMessage("Error: " + errorMsg, 'assistant');
+                console.error("Follow-up error:", response.status, response.statusText);
+                return;
+            }
+
+            const data = await response.json();
+            if (data.reply) {
+                appendMessage(data.reply, 'assistant');
+                conversationHistory = data.history;
+            } else {
+                appendMessage("AI did not provide a reply.", 'assistant');
+            }
+        } catch (error) {
+            if(aiTypingIndicator) aiTypingIndicator.style.display = 'none';
+            sendFollowUpButton.disabled = false;
+            followUpInput.disabled = false;
+            appendMessage("Network error or server issue when trying to get AI response.", 'assistant');
+            console.error('Fetch error:', error);
+        }
+    }
+
+    if (sendFollowUpButton && followUpInput) {
+        sendFollowUpButton.addEventListener('click', handleFollowUp);
+        followUpInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                handleFollowUp();
+            }
+        });
+    }
+
+    if (chatMessagesContainer) {
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+});
+</script>
 {% endblock %}

@@ -5,7 +5,11 @@ import os
 import pandas as pd # Added for CSV parsing if needed later, not strictly used for mappings now
 import random # Added for random value generation
 from functools import wraps # Added for login_required decorator
+from groq import Groq # Added for Groq API
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 # Import preprocessing utilities
 import sys
 # Add project root to sys.path to locate the 'utils' module
@@ -69,36 +73,36 @@ CATEGORICAL_FEATURE_NAMES_FOR_ENCODING = [
 NUMERICAL_FEATURES = [f for f in ALL_FEATURE_NAMES if f not in CATEGORICAL_FEATURE_NAMES_FOR_ENCODING]
 
 FEATURE_DESCRIPTIONS = {
-    'school': "Student's school (GP or MS)",
-    'sex': "Student's sex (F - female or M - male)",
-    'age': "Student's age (from 15 to 22)",
-    'address': "Student's home address type (U - urban or R - rural)",
-    'famsize': "Family size (LE3 - less or equal to 3 or GT3 - greater than 3)",
-    'Pstatus': "Parent's cohabitation status (T - living together or A - apart)",
-    'Medu': "Mother's education (0 - none, 1 - primary (4th grade), 2 - 5th to 9th grade, 3 - secondary, 4 - higher education)",
-    'Fedu': "Father's education (0 - none, 1 - primary (4th grade), 2 - 5th to 9th grade, 3 - secondary, 4 - higher education)",
-    'Mjob': "Mother's job (teacher, health care, services, at_home, or other)",
-    'Fjob': "Father's job (teacher, health care, services, at_home, or other)",
-    'reason': "Reason to choose this school (home, reputation, course preference, or other)",
-    'guardian': "Student's guardian (mother, father, or other)",
-    'traveltime': "Home to school travel time (1: <15 min, 2: 15-30 min, 3: 30min-1hr, 4: >1hr)",
-    'studytime': "Weekly study time (1: <2 hrs, 2: 2-5 hrs, 3: 5-10 hrs, 4: >10 hrs)",
-    'failures': "Number of past class failures (n if 1<=n<3, else 4)",
-    'schoolsup': "Extra educational support (yes or no)",
-    'famsup': "Family educational support (yes or no)",
-    'paid': "Extra paid classes within the course subject (yes or no)",
-    'activities': "Extra-curricular activities (yes or no)",
-    'nursery': "Attended nursery school (yes or no)",
-    'higher': "Wants to take higher education (yes or no)",
-    'internet': "Internet access at home (yes or no)",
-    'romantic': "With a romantic relationship (yes or no)",
-    'famrel': "Quality of family relationships (1 - very bad to 5 - excellent)",
-    'freetime': "Free time after school (1 - very low to 5 - very high)",
-    'goout': "Going out with friends (1 - very low to 5 - very high)",
-    'Dalc': "Workday alcohol consumption (1 - very low to 5 - very high)",
-    'Walc': "Weekend alcohol consumption (1 - very low to 5 - very high)",
-    'health': "Current health status (1-very bad to 5-very good)",
-    'absences': "Number of school absences (0 to 93)"
+    'school': "Student's school (binary: \"GP\" or \"MS\")",
+    'sex': "Student's sex (binary: \"F\" - female or \"M\" - male)",
+    'age': "Student's age (numeric: from 15 to 22)",
+    'address': "Student's home address type (binary: \"U\" - urban or \"R\" - rural)",
+    'famsize': "Family size (binary: \"LE3\" - less or equal to 3 or \"GT3\" - greater than 3)",
+    'Pstatus': "Parent's cohabitation status (binary: \"T\" - living together or \"A\" - apart)",
+    'Medu': "Mother's education (numeric: 0 - none,  1 - primary education (4th grade), 2 - 5th to 9th grade, 3 - secondary education or 4 - higher education)",
+    'Fedu': "Father's education (numeric: 0 - none,  1 - primary education (4th grade), 2 - 5th to 9th grade, 3 - secondary education or 4 - higher education)",
+    'Mjob': "Mother's job (nominal: \"teacher\", \"health\" care related, civil \"services\" (e.g. administrative or police), \"at_home\" or \"other\")",
+    'Fjob': "Father's job (nominal: \"teacher\", \"health\" care related, civil \"services\" (e.g. administrative or police), \"at_home\" or \"other\")",
+    'reason': "Reason to choose this school (nominal: close to \"home\", school \"reputation\", \"course\" preference or \"other\")",
+    'guardian': "Student's guardian (nominal: \"mother\", \"father\" or \"other\")",
+    'traveltime': "Home to school travel time (numeric: 1 - <15 min., 2 - 15 to 30 min., 3 - 30 min. to 1 hour, or 4 - >1 hour)",
+    'studytime': "Weekly study time (numeric: 1 - <2 hours, 2 - 2 to 5 hours, 3 - 5 to 10 hours, or 4 - >10 hours)",
+    'failures': "Number of past class failures (numeric: n if 1<=n<3, else 4)",
+    'schoolsup': "Extra educational support (binary: yes or no)",
+    'famsup': "Family educational support (binary: yes or no)",
+    'paid': "Extra paid classes within the course subject (Math or Portuguese) (binary: yes or no)",
+    'activities': "Extra-curricular activities (binary: yes or no)",
+    'nursery': "Attended nursery school (binary: yes or no)",
+    'higher': "Wants to take higher education (binary: yes or no)",
+    'internet': "Internet access at home (binary: yes or no)",
+    'romantic': "With a romantic relationship (binary: yes or no)",
+    'famrel': "Quality of family relationships (numeric: from 1 - very bad to 5 - excellent)",
+    'freetime': "Free time after school (numeric: from 1 - very low to 5 - very high)",
+    'goout': "Going out with friends (numeric: from 1 - very low to 5 - very high)",
+    'Dalc': "Workday alcohol consumption (numeric: from 1 - very low to 5 - very high)",
+    'Walc': "Weekend alcohol consumption (numeric: from 1 - very low to 5 - very high)",
+    'health': "Current health status (numeric: from 1 - very bad to 5 - very good)",
+    'absences': "Number of school absences (numeric: from 0 to 93)"
 }
 
 # For random input generation for categorical features
@@ -146,6 +150,86 @@ loaded_standard_scaler = None
 fitted_numerical_cols = []    # List of numerical columns the scaler was FITTED on
 final_feature_order_from_training = [] # List of all feature columns in order model expects
 preprocessors_loaded_successfully = False
+
+# --- Groq API Configuration ---
+# IMPORTANT: Set your Groq API key as an environment variable: GROQ_API_KEY
+# Example: export GROQ_API_KEY='your_api_key_here'
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+if not GROQ_API_KEY:
+    print("WARNING: GROQ_API_KEY environment variable not set. AI interpretation will be disabled.")
+    # You could choose to raise an error or have a fallback.
+    # For now, it will just not provide interpretations.
+
+def get_ai_interpretation(input_features: dict, feature_descriptions: dict, all_feature_names: list, prediction_outcome: str = None, conversation_history: list = None, follow_up_message: str = None) -> tuple[str, list]:
+    """
+    Gets an AI-powered interpretation from Groq API, supporting conversation history and specific behavior for follow-ups.
+    For initial calls (no follow_up_message), it expects conversation_history to contain the initial user prompt.
+    For follow-ups, it prepends a transient system message to guide concise answers and uses lower temperature.
+    """
+    if not GROQ_API_KEY:
+        error_msg = "AI interpretation is unavailable because the Groq API key is not configured."
+        return error_msg, conversation_history or []
+
+    client = Groq(api_key=GROQ_API_KEY)
+
+    # actual_history_to_update will be the conversation history that is maintained and returned.
+    actual_history_to_update = conversation_history.copy() if conversation_history else []
+
+    # messages_for_api_call is what we construct to send to the Groq API for the current turn.
+    messages_for_api_call = []
+    temperature_setting = 0.6 # Default for initial, comprehensive interpretation
+
+    if follow_up_message:
+        # This is a follow-up question.
+        temperature_setting = 0.3 # Lower temperature for more direct, less verbose follow-ups
+
+        # 1. Prepend the transient system message for THIS API call only.
+        messages_for_api_call.append(
+            {"role": "system", "content": "You are an AI assistant. The user is asking a follow-up question. Answer it concisely and directly, using the prior conversation for context. Do NOT repeat the full structured analysis or instructions from the initial query. Focus only on the user's latest question to provide a specific answer."}
+        )
+
+        # 2. Add the existing actual conversation history for context to the API call.
+        messages_for_api_call.extend(actual_history_to_update)
+
+        # 3. Add the user's new follow-up message for the API call.
+        user_follow_up_obj = {"role": "user", "content": follow_up_message}
+        messages_for_api_call.append(user_follow_up_obj)
+
+        # 4. Also add the user's follow-up to the actual_history_to_update (which will be saved).
+        actual_history_to_update.append(user_follow_up_obj)
+    else:
+        # This is an initial interpretation request.
+        # actual_history_to_update (which comes from conversation_history) should already contain the initial user prompt.
+        if not actual_history_to_update or actual_history_to_update[-1]["role"] != "user":
+            # This defensive check ensures the history passed for an initial call ends with the user's detailed prompt.
+            return "Error: Initial prompt not found or history malformed for AI interpretation.", actual_history_to_update
+        # For the API call, send the history as is (it contains the initial comprehensive prompt).
+        messages_for_api_call = actual_history_to_update
+
+    # Defensive check: ensure there's something to send.
+    if not messages_for_api_call or not messages_for_api_call[-1].get("content"):
+        return "Error: No message content to send to AI.", actual_history_to_update
+
+    try:
+        chat_completion = client.chat.completions.create(
+            messages=messages_for_api_call,
+            model=GROQ_MODEL,
+            temperature=temperature_setting,
+            max_tokens=1500, # Max_tokens can be adjusted; 1500 is generous for initial, okay for follow-up.
+        )
+        ai_response_content = chat_completion.choices[0].message.content
+
+        # Append AI's response to the actual_history_to_update.
+        actual_history_to_update.append({"role": "assistant", "content": ai_response_content})
+        return ai_response_content, actual_history_to_update
+    except Exception as e:
+        error_msg = f"An error occurred while communicating with the AI: {str(e)}"
+        print(f"Error calling Groq API: {e}")
+        # Return the current state of actual_history_to_update, which includes the user's last message if it was a follow-up.
+        return error_msg, actual_history_to_update
 
 # --- Startup Loading Functions ---
 def load_all_preprocessors_on_startup():
@@ -368,15 +452,13 @@ def predict():
             raw_features_for_display[feature_name] = value # For display on result page
             if value is None or value == '':
                 flash(f'Please provide a value for all features. {feature_name.replace("_"," ").title()} is missing.', 'warning')
-                # Simplified redirect for input errors to avoid re-rendering index with complex state here
-                return redirect(url_for('index')) # User will lose current inputs, consider JS validation on client-side
+                return redirect(url_for('index'))
             raw_input_data[feature_name] = value
 
         # 2. Create DataFrame from input
         input_df = pd.DataFrame([raw_input_data])
 
         # 3. Convert column types for DataFrame before preprocessing
-        # Numerical columns (use fitted_numerical_cols loaded from JSON)
         for col in fitted_numerical_cols:
             if col in input_df.columns:
                 try:
@@ -385,29 +467,25 @@ def predict():
                     flash(f"Invalid value for numerical feature '{col}': '{input_df[col].iloc[0]}'. Please enter a number.", 'danger')
                     return redirect(url_for('index'))
 
-        # Categorical columns should already be strings/objects, which is fine for LabelEncoder.transform
-
         # 4. Apply Label Encoders
-        # CATEGORICAL_FEATURE_NAMES_FOR_ENCODING defines which columns to encode
         processed_df = apply_label_encoders(
-            input_df.copy(), # Pass a copy
+            input_df.copy(),
             categorical_cols=CATEGORICAL_FEATURE_NAMES_FOR_ENCODING,
-            preprocessor_dir=PREPROCESSOR_DIR, # For loading if not pre-loaded
+            preprocessor_dir=PREPROCESSOR_DIR,
             mode='transform',
-            encoders_dict=loaded_label_encoders # Pass pre-loaded encoders
+            encoders_dict=loaded_label_encoders
         )
         if processed_df is None:
             flash("Error during categorical data encoding. An invalid value might have been provided for a dropdown. Check inputs.", "danger")
             return redirect(url_for('index'))
 
         # 5. Apply Standard Scaler
-        # fitted_numerical_cols has the list of columns the scaler was FITTED on, in correct order
         processed_df = apply_standard_scaler(
-            processed_df, # Use output from label encoding
+            processed_df,
             numerical_cols=fitted_numerical_cols,
-            preprocessor_dir=PREPROCESSOR_DIR, # For loading if not pre-loaded
+            preprocessor_dir=PREPROCESSOR_DIR,
             mode='transform',
-            scaler_object=loaded_standard_scaler # Pass pre-loaded scaler
+            scaler_object=loaded_standard_scaler
         )
         if processed_df is None:
             flash("Error during numerical data scaling. Please check inputs.", "danger")
@@ -430,20 +508,12 @@ def predict():
             flash(f"Internal error during feature preparation: {str(e_reorder)}", "danger")
             return redirect(url_for('index'))
 
-
         # 7. Convert to NumPy array for prediction
-        final_features_array = processed_df.to_numpy() # .reshape(1, -1) might not be needed if df is single row
-        if final_features_array.ndim == 1: # Ensure it's 2D for scikit-learn
+        final_features_array = processed_df.to_numpy()
+        if final_features_array.ndim == 1:
             final_features_array = final_features_array.reshape(1, -1)
 
-        # Check feature count against one of the models (optional sanity check)
-        # Example: first_model_key = next(iter(loaded_models))
-        # if loaded_models[first_model_key].n_features_in_ != final_features_array.shape[1]:
-        #     flash(f"Feature count mismatch. Model expects {loaded_models[first_model_key].n_features_in_}, got {final_features_array.shape[1]}", "danger")
-        #     return redirect(url_for('index'))
-
-
-        # --- Prediction Loop (largely unchanged) ---
+        # --- Prediction Loop ---
         all_predictions_data = []
         for model_filename, model_object in loaded_models.items():
             display_name = MODEL_DISPLAY_NAMES.get(model_filename, model_filename.replace('.joblib','').replace('.pkl','').title())
@@ -460,45 +530,35 @@ def predict():
                     idx_fail = 0
 
                     try:
-                        # Assuming target 'passed' was encoded as 0 (no/fail) and 1 (yes/pass) in the notebook.
-                        # And that model.classes_ reflects this, e.g. [0, 1]
-                        # And predict_proba columns correspond to these sorted classes.
                         target_encoder_path = os.path.join(PREPROCESSOR_DIR, "passed_label_encoder.joblib")
                         le_passed = load_preprocessor(target_encoder_path)
 
                         if le_passed:
-                            pass_label_numeric = le_passed.transform(['yes'])[0] # Assuming 'yes' means pass
-                            # fail_label_numeric = le_passed.transform(['no'])[0]
-
-                            # Find index of 'pass' in model's classes
-                            list_class_labels = list(class_labels) # Convert to list for index()
+                            pass_label_numeric = le_passed.transform(['yes'])[0]
+                            list_class_labels = list(class_labels)
                             if pass_label_numeric in list_class_labels:
                                 idx_pass = list_class_labels.index(pass_label_numeric)
-                                idx_fail = 1 - idx_pass # Assuming binary classification
-                            else: # Fallback if 'yes' transformed value not in model.classes_
+                                idx_fail = 1 - idx_pass
+                            else:
                                 print(f"Warning: 'yes' ({pass_label_numeric}) not in model {display_name} classes_ {class_labels}. Using default 0/1 indexing.")
-                                # Default idx_pass=1, idx_fail=0 might still be correct if classes are [0,1] and 1 means pass
-                        else: # Fallback if target encoder not found
+                        else:
                              print(f"Warning: passed_label_encoder.joblib not found. Using default 0/1 indexing for Pass/Fail probabilities for model {display_name}.")
-                             # Default idx_pass=1, idx_fail=0 assumes class 1 is Pass.
 
                         prob_pass = probabilities[0][idx_pass]
                         prob_fail = probabilities[0][idx_fail]
                         predicted_class_index = np.argmax(probabilities[0])
                         prediction_label = "Pass" if predicted_class_index == idx_pass else "Fail"
 
-                    except ValueError as ve_classes: # e.g. if a class label is not found
+                    except ValueError as ve_classes:
                         print(f"Warning: Could not reliably determine Pass/Fail class indices for {display_name} (classes: {class_labels}): {ve_classes}. Falling back to default 0/1 indexing.")
-                        prob_pass = probabilities[0][1] # Default: Class 1 probability for "Pass"
-                        prob_fail = probabilities[0][0] # Default: Class 0 probability for "Fail"
+                        prob_pass = probabilities[0][1]
+                        prob_fail = probabilities[0][0]
                         prediction_label = "Pass" if np.argmax(probabilities[0]) == 1 else "Fail"
                 else:
                     prediction_result = model_object.predict(final_features_array)
-                    # Ensure consistent "Pass"/"Fail" label
-                    # Assuming 1 from predict() means "Pass" after target encoding in notebook
                     target_encoder_path = os.path.join(PREPROCESSOR_DIR, "passed_label_encoder.joblib")
                     le_passed = load_preprocessor(target_encoder_path)
-                    pass_numeric_val = 1 # Default assumption
+                    pass_numeric_val = 1
                     if le_passed:
                         try:
                             pass_numeric_val = le_passed.transform(['yes'])[0]
@@ -507,7 +567,6 @@ def predict():
 
                     prediction_label = "Pass" if prediction_result[0] == pass_numeric_val else "Fail"
                     print(f"Note: Model {display_name} does not have predict_proba. Using predict(). Label: {prediction_label} from raw: {prediction_result[0]}")
-
 
                 all_predictions_data.append({
                     'name': display_name, 'raw_name': model_filename, 'prediction': prediction_label,
@@ -524,14 +583,167 @@ def predict():
                     'prob_pass': None, 'prob_fail': None, 'metrics': model_metrics, 'error': str(model_pred_e)
                 })
 
+        # Store predictions in session for AI interpretation
+        session['last_predictions'] = all_predictions_data
+        session['last_features'] = raw_features_for_display
+
         return render_template('result.html',
                                predictions=all_predictions_data,
                                features_display=raw_features_for_display,
-                               preprocessing_status=preprocessing_status_message, # Updated from preprocessing_warning
+                               preprocessing_status=preprocessing_status_message,
                                actual_value_from_dataset=actual_value_from_dataset)
 
-    # Fallback for GET or other methods to /predict
     return redirect(url_for('index'))
+
+# Define custom_ai_prompt outside of any function so it can be used by multiple functions
+def custom_ai_prompt(features, feature_descriptions, all_feature_names, prediction_outcome, all_model_preds):
+    features_string = ""
+    for feature_name in all_feature_names:
+        value = features.get(feature_name, "N/A")
+        description = feature_descriptions.get(feature_name, "No description available.")
+        features_string += f"{feature_name.replace('_',' ').title()}: {value} (Meaning: {description})\n"
+    model_preds_str = "\n".join([f"{k}: {v}" for k, v in all_model_preds.items()])
+    prompt = f'''
+You are an expert AI assistant. Here are the predictions from several models for a student's performance:
+{model_preds_str}
+
+The XGBoost model is the best performing model, so focus your explanation on its prediction: {prediction_outcome}.
+
+IMPORTANT: In your explanation, you MUST explicitly mention and compare the predictions from all models. If all models agree, highlight this consensus. If there are disagreements between models, discuss possible reasons for these differences based on the models' characteristics and the student data.
+
+The student's data is as follows. Use these exact feature names and their meanings for your analysis:
+{features_string}
+
+Your response MUST be in a style suitable for a formal report or a word document. DO NOT use any markdown formatting (like asterisks for bold, or # for headings). Instead, use plain text, well-structured paragraphs, and clear topic sentences. You can use line breaks to separate paragraphs or logical sections.
+
+Structure your analysis like this:
+
+Model Predictions Overview:
+[First, summarize all model predictions, noting agreements and disagreements. Highlight that XGBoost is the best performing model.]
+
+Overall Assessment of Prediction:
+[Start with a clear statement confirming the XGBoost prediction: {prediction_outcome}.]
+
+Key Factors Likely Influencing the Prediction of "{prediction_outcome}":
+[Identify 2-4 key features that you believe most significantly contributed to this prediction. For each feature, provide a detailed paragraph explaining HOW and WHY its specific value, in context of its meaning, likely influenced the outcome. Be specific about the values.]
+
+Other Notable Observations:
+[Briefly mention any other features that might be relevant, or any seeming contradictions, and how they might be interpreted or why they might be less influential than the key factors.]
+
+Concluding Remarks:
+[Provide a concise summary. You can also subtly invite clarification if appropriate, for example: "Further details on any specific aspect can be provided upon request."]
+
+Begin your detailed interpretation now:
+'''
+    return prompt
+
+@app.route('/get_ai_interpretation', methods=['POST'])
+@login_required
+def get_ai_interpretation_route():
+    """New route to handle AI interpretation requests"""
+    if not session.get('last_predictions') or not session.get('last_features'):
+        return jsonify({"error": "No prediction data available for interpretation."}), 400
+
+    predictions = session['last_predictions']
+    features = session['last_features']
+
+    # Find XGBoost model's prediction
+    xgb_pred = None
+    for pred in predictions:
+        if 'xgb' in pred['raw_name'].lower():
+            xgb_pred = pred
+            break
+    if not xgb_pred:
+        # fallback to first model if XGBoost not found
+        xgb_pred = predictions[0]
+
+    # Prepare all model predictions as context
+    all_model_preds = {p['name']: p['prediction'] for p in predictions}
+
+    # Get the XGBoost prediction outcome
+    primary_prediction = xgb_pred['prediction']
+
+    # Compose the initial prompt
+    initial_prompt = custom_ai_prompt(features, FEATURE_DESCRIPTIONS, ALL_FEATURE_NAMES, primary_prediction, all_model_preds)
+    conversation_history = [{"role": "user", "content": initial_prompt}]
+
+    # Call the AI
+    ai_interpretation_text, conversation_history = get_ai_interpretation(
+        input_features=features,
+        feature_descriptions=FEATURE_DESCRIPTIONS,
+        all_feature_names=ALL_FEATURE_NAMES,
+        prediction_outcome=primary_prediction,
+        conversation_history=conversation_history
+    )
+
+    # Store conversation history in session
+    session['ai_conversation_history'] = conversation_history
+
+    return jsonify({
+        "interpretation": ai_interpretation_text,
+        "conversation_history": conversation_history
+    })
+
+@app.route('/chat_follow_up', methods=['POST'])
+@login_required
+def chat_follow_up():
+    data = request.get_json()
+    follow_up_message = data.get('message')
+
+    # Get conversation history from session
+    conversation_history = session.get('ai_conversation_history', [])
+    features = session.get('last_features', {})
+    predictions = session.get('last_predictions', [])
+
+    # Handle missing conversation history by creating a new conversation
+    if not conversation_history and features and predictions:
+        # Find XGBoost model's prediction for a new conversation
+        xgb_pred = None
+        for pred in predictions:
+            if 'xgb' in pred['raw_name'].lower():
+                xgb_pred = pred
+                break
+        if not xgb_pred:
+            xgb_pred = predictions[0]
+
+        all_model_preds = {p['name']: p['prediction'] for p in predictions}
+        primary_prediction = xgb_pred['prediction']
+
+        # Create a new conversation with the same prompt as the initial interpretation
+        initial_prompt = custom_ai_prompt(features, FEATURE_DESCRIPTIONS, ALL_FEATURE_NAMES,
+                                        primary_prediction, all_model_preds)
+        conversation_history = [{"role": "user", "content": initial_prompt}]
+
+        # Add a system message to explain what happened
+        conversation_history.append({
+            "role": "system",
+            "content": "Previous conversation not found. Starting a new conversation."
+        })
+
+    if not follow_up_message:
+        return jsonify({"error": "Missing message for follow-up."}), 400
+
+    if not conversation_history:
+        return jsonify({"error": "No conversation data available. Please refresh the page and try again."}), 400
+
+    if not features:
+        return jsonify({"error": "No feature data available for context. Please refresh the page and try again."}), 400
+
+    ai_response_text, updated_history = get_ai_interpretation(
+        input_features=features,
+        feature_descriptions=FEATURE_DESCRIPTIONS,
+        all_feature_names=ALL_FEATURE_NAMES,
+        conversation_history=conversation_history,
+        follow_up_message=follow_up_message
+    )
+
+    # Update conversation history in session
+    session['ai_conversation_history'] = updated_history
+
+    return jsonify({
+        "reply": ai_response_text,
+        "history": updated_history
+    })
 
 @app.route('/generate_random_input')
 @login_required

@@ -4,6 +4,7 @@
 
 {% block content %}
 <style>
+    /* Enhanced styling for better visual hierarchy and user experience */
     .info-icon {
         font-size: 0.85rem;
         color: var(--bs-secondary-color);
@@ -14,29 +15,120 @@
     .info-icon:hover {
         color: var(--bs-primary);
     }
+    .nav-tabs {
+        border-bottom: 2px solid var(--bs-light);
+        margin-bottom: 0;
+    }
     .nav-tabs .nav-link {
         color: var(--bs-primary);
         font-weight: 500;
+        border: none;
+        padding: 1rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .nav-tabs .nav-link:hover {
+        background-color: var(--bs-primary-bg-subtle);
+        border: none;
     }
     .nav-tabs .nav-link.active {
         color: var(--bs-dark);
         background-color: var(--bs-light);
-        border-bottom-color: var(--bs-light);
-        border-bottom-width: 3px;
+        border: none;
+        border-bottom: 3px solid var(--bs-primary);
+    }
+    .card {
+        border: none;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-2px);
     }
     .card-header {
         background-color: var(--bs-primary-bg-subtle);
+        border-bottom: 1px solid var(--bs-light);
+        padding: 1.5rem;
     }
     .form-label {
         font-weight: 500;
+        color: var(--bs-dark);
+        margin-bottom: 0.5rem;
+    }
+    .form-control, .form-select {
+        border: 1px solid var(--bs-light);
+        padding: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.15);
+    }
+    .btn {
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .btn-primary {
+        background-color: var(--bs-primary);
+        border: none;
+    }
+    .btn-primary:hover {
+        background-color: var(--bs-primary-dark);
+        transform: translateY(-1px);
+    }
+    .btn-outline-secondary {
+        border: 1px solid var(--bs-secondary);
+    }
+    .btn-outline-secondary:hover {
+        background-color: var(--bs-secondary);
+        color: white;
+    }
+    .alert {
+        border: none;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .tab-content {
+        background-color: var(--bs-light);
+        border-radius: 0.5rem;
+        padding: 2rem;
+    }
+    .section-title {
+        color: var(--bs-primary);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--bs-primary-bg-subtle);
+    }
+    .feature-group {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+    }
+    .dataset-loader {
+        background-color: var(--bs-light);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    .badge {
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    .form-text {
+        color: var(--bs-secondary);
+        font-size: 0.875rem;
     }
 </style>
 
 <div class="row justify-content-center">
     <div class="col-xl-10 col-lg-10">
-        <div class="card shadow-sm border-light">
+        <div class="card shadow-sm">
             <div class="card-header text-center py-4">
-                <h2 class="mb-0"><i class="fas fa-brain me-2"></i>Predict Student Performance</h2>
+                <h2 class="mb-2"><i class="fas fa-brain me-2"></i>Predict Student Performance</h2>
                 <p class="text-muted mb-0">Fill in the student's details below to get a prediction.</p>
             </div>
             <div class="card-body p-4 p-md-5">
@@ -89,16 +181,16 @@
                         </li>
                     </ul>
 
-                    <div class="tab-content p-3 border bg-light rounded" id="featureTabsContent">
+                    <div class="tab-content" id="featureTabsContent">
                         <!-- Student & Family Background Tab -->
                         <div class="tab-pane fade show active" id="student-family" role="tabpanel" aria-labelledby="student-family-tab">
-                            <h5 class="mb-3 text-primary border-bottom pb-2">Student & Family Information</h5>
+                            <h5 class="section-title">Student & Family Information</h5>
                             <div class="row gx-3 gy-3">
                                 {% set student_family_features = ['school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu', 'Mjob', 'Fjob', 'guardian', 'famrel', 'nursery'] %}
                                 {% for feature_name in student_family_features %}
                                     {% if feature_name in all_features %}
                                         <div class="col-md-6">
-                                            <div class="form-group">
+                                            <div class="feature-group">
                                                 <label for="{{ feature_name }}" class="form-label">{{ feature_name | title | replace('_',' ') }}:
                                                     {% if feature_descriptions and feature_name in feature_descriptions %}
                                                         <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ feature_descriptions[feature_name] }}"></i>
@@ -136,43 +228,43 @@
 
                         <!-- Academic & Lifestyle Habits Tab -->
                         <div class="tab-pane fade" id="academic-lifestyle" role="tabpanel" aria-labelledby="academic-lifestyle-tab">
-                            <h5 class="mb-3 text-primary border-bottom pb-2">Academic & Lifestyle Habits</h5>
+                            <h5 class="section-title">Academic & Lifestyle Habits</h5>
                             <div class="row gx-3 gy-3">
                                 {% set academic_lifestyle_features = ['reason', 'traveltime', 'studytime', 'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'higher', 'internet', 'romantic', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences'] %}
                                 {% for feature_name in academic_lifestyle_features %}
                                     {% if feature_name in all_features %}
-                                      <div class="col-md-6">
-                                          <div class="form-group">
-                                              <label for="{{ feature_name }}" class="form-label">{{ feature_name | title | replace('_',' ') }}:
-                                                  {% if feature_descriptions and feature_name in feature_descriptions %}
-                                                      <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ feature_descriptions[feature_name] }}"></i>
-                                                  {% endif %}
-                                              </label>
-                                              {% if feature_name in categorical_feature_names %}
-                                                  <select name="{{ feature_name }}" id="{{ feature_name }}" class="form-select" required>
-                                                      <option value="" selected disabled>Select {{ feature_name | title | replace('_',' ') }}</option>
-                                                      {% if feature_name in simple_categorical_values %}
-                                                          {% for option_val in simple_categorical_values[feature_name] %}
-                                                              <option value="{{ option_val }}">{{ option_val | title }}</option>
-                                                          {% endfor %}
-                                                      {% endif %}
-                                                  </select>
-                                              {% elif feature_name in numerical_features %}
-                                                  <input type="number" step="any" name="{{ feature_name }}" id="{{ feature_name }}" class="form-control"
-                                                      placeholder="Enter {{ feature_name | title | replace('_',' ') }}"
-                                                      {% if feature_name == 'age' %} min="15" max="22" {% endif %}
-                                                      {% if feature_name in ['Medu', 'Fedu'] %} min="0" max="4" {% endif %}
-                                                      {% if feature_name == 'traveltime' %} min="1" max="4" {% endif %}
-                                                      {% if feature_name == 'studytime' %} min="1" max="4" {% endif %}
-                                                      {% if feature_name == 'failures' %} min="0" max="3" {% endif %}
-                                                      {% if feature_name == 'famrel' %} min="1" max="5" {% endif %}
-                                                      {% if feature_name == 'health' %} min="1" max="5" {% endif %}
-                                                      {% if feature_name in ['freetime','goout','Dalc','Walc'] %} min="1" max="5" {% endif %}
-                                                      {% if feature_name == 'absences' %} min="0" max="93" {% endif %}
-                                                  required>
-                                              {% endif %}
-                                          </div>
-                                      </div>
+                                        <div class="col-md-6">
+                                            <div class="feature-group">
+                                                <label for="{{ feature_name }}" class="form-label">{{ feature_name | title | replace('_',' ') }}:
+                                                    {% if feature_descriptions and feature_name in feature_descriptions %}
+                                                        <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ feature_descriptions[feature_name] }}"></i>
+                                                    {% endif %}
+                                                </label>
+                                                {% if feature_name in categorical_feature_names %}
+                                                    <select name="{{ feature_name }}" id="{{ feature_name }}" class="form-select" required>
+                                                        <option value="" selected disabled>Select {{ feature_name | title | replace('_',' ') }}</option>
+                                                        {% if feature_name in simple_categorical_values %}
+                                                            {% for option_val in simple_categorical_values[feature_name] %}
+                                                                <option value="{{ option_val }}">{{ option_val | title }}</option>
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                    </select>
+                                                {% elif feature_name in numerical_features %}
+                                                    <input type="number" step="any" name="{{ feature_name }}" id="{{ feature_name }}" class="form-control"
+                                                        placeholder="Enter {{ feature_name | title | replace('_',' ') }}"
+                                                        {% if feature_name == 'age' %} min="15" max="22" {% endif %}
+                                                        {% if feature_name in ['Medu', 'Fedu'] %} min="0" max="4" {% endif %}
+                                                        {% if feature_name == 'traveltime' %} min="1" max="4" {% endif %}
+                                                        {% if feature_name == 'studytime' %} min="1" max="4" {% endif %}
+                                                        {% if feature_name == 'failures' %} min="0" max="3" {% endif %}
+                                                        {% if feature_name == 'famrel' %} min="1" max="5" {% endif %}
+                                                        {% if feature_name == 'health' %} min="1" max="5" {% endif %}
+                                                        {% if feature_name in ['freetime','goout','Dalc','Walc'] %} min="1" max="5" {% endif %}
+                                                        {% if feature_name == 'absences' %} min="0" max="93" {% endif %}
+                                                    required>
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     {% endif %}
                                 {% endfor %}
                             </div>
@@ -181,33 +273,35 @@
 
                     <div class="row mt-4 pt-3 border-top">
                         <div class="col-md-6 mb-2 mb-md-0">
-                            <button type="button" class="btn btn-outline-secondary btn-lg w-100" id="generateRandomButton"><i class="fas fa-random me-2"></i>Generate Random Inputs</button>
+                            <button type="button" class="btn btn-outline-secondary btn-lg w-100" id="generateRandomButton">
+                                <i class="fas fa-random me-2"></i>Generate Random Inputs
+                            </button>
                         </div>
                         <div class="col-md-6">
-                            <button type="submit" class="btn btn-primary btn-lg w-100"><i class="fas fa-paper-plane me-2"></i>Predict Performance</button>
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-paper-plane me-2"></i>Predict Performance
+                            </button>
                         </div>
                     </div>
 
                     {% if dataset_row_count > 0 %}
-                    <div class="row mt-3 pt-3 border-top">
-                        <div class="col-12">
-                            <div class="d-flex align-items-center">
-                                <h6 class="mb-0 me-3 text-primary"><i class="fas fa-table me-2"></i>Load From Dataset:</h6>
-                                <div class="input-group" style="max-width: 400px;">
-                                    <span class="input-group-text">Row #</span>
-                                    <input type="number" class="form-control" id="datasetRowInput" min="0" max="{{ dataset_row_count - 1 }}" placeholder="Enter row # (0-{{ dataset_row_count - 1 }})">
-                                    <button class="btn btn-outline-primary" type="button" id="loadDatasetRowButton">
-                                        <i class="fas fa-database me-1"></i>Load
-                                    </button>
-                                </div>
-                                <div class="ms-3">
-                                    <span class="badge bg-info" id="actualValueBadge" style="display: none;"></span>
-                                </div>
+                    <div class="dataset-loader">
+                        <div class="d-flex align-items-center">
+                            <h6 class="mb-0 me-3 text-primary"><i class="fas fa-table me-2"></i>Load From Dataset:</h6>
+                            <div class="input-group" style="max-width: 400px;">
+                                <span class="input-group-text">Row #</span>
+                                <input type="number" class="form-control" id="datasetRowInput" min="0" max="{{ dataset_row_count - 1 }}" placeholder="Enter row # (0-{{ dataset_row_count - 1 }})">
+                                <button class="btn btn-outline-primary" type="button" id="loadDatasetRowButton">
+                                    <i class="fas fa-database me-1"></i>Load
+                                </button>
                             </div>
-                            <div class="form-text small text-muted mt-1">
-                                Load feature values from your dataset ({{ dataset_row_count }} rows available).
-                                The actual outcome will be shown on the results page for comparison.
+                            <div class="ms-3">
+                                <span class="badge bg-info" id="actualValueBadge" style="display: none;"></span>
                             </div>
+                        </div>
+                        <div class="form-text small text-muted mt-2">
+                            Load feature values from your dataset ({{ dataset_row_count }} rows available).
+                            The actual outcome will be shown on the results page for comparison.
                         </div>
                     </div>
                     {% endif %}
@@ -215,14 +309,16 @@
             </div>
             <div class="card-footer text-center py-3 bg-light-subtle">
                 <p class="small mb-1 text-muted">Ensure all fields are accurately filled for the best prediction.</p>
-                <a href="{{ url_for('about') }}" class="btn btn-link btn-sm"><i class="fas fa-info-circle me-1"></i>Learn more about this project</a>
+                <a href="{{ url_for('about') }}" class="btn btn-link btn-sm">
+                    <i class="fas fa-info-circle me-1"></i>Learn more about this project
+                </a>
             </div>
         </div>
     </div>
 </div>
 
 {% block scripts %}
-{{ super() }} {# Include scripts from base.html if any #}
+{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize Bootstrap tooltips
@@ -264,13 +360,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         const field = form.elements[feature_name];
                         if (field) {
                             field.value = data[feature_name];
-                            // If you have selectpickers or other custom controls, you might need to refresh them here
                             if (field.tagName === 'SELECT') {
-                                // Trigger change event for any listeners
                                 field.dispatchEvent(new Event('change'));
                             }
-                        } else {
-                            // console.warn('Field not found for random generation: ', feature_name);
                         }
                     }
                     alert('Random input values have been generated and populated!');
@@ -320,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             actualValueBadge.style.display = 'inline-block';
                         }
 
-                        delete data.actual_value_from_dataset; // Remove so it doesn't get processed in the loop below
+                        delete data.actual_value_from_dataset;
                     }
 
                     // Fill in form fields
