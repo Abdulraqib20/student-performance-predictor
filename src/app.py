@@ -155,11 +155,8 @@ final_feature_order_from_training = [] # List of all feature columns in order mo
 preprocessors_loaded_successfully = False
 
 # --- Groq API Configuration ---
-# IMPORTANT: Set your Groq API key as an environment variable: GROQ_API_KEY
-# Example: export GROQ_API_KEY='your_api_key_here'
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-# GROQ_MODEL = "llama-3.3-70b-versatile"
-GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_MODEL = "llama-3.1-8b-instant" # llama3-70b-8192 # "llama-3.3-70b-versatile"
 
 if not GROQ_API_KEY:
     print("WARNING: GROQ_API_KEY environment variable not set. AI interpretation will be disabled.")
