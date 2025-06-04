@@ -35,11 +35,11 @@ app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/' # Example key, replace in production
 
 # Configuration for login
-# USERNAME = "21/52HL155"
-# PASSWORD = "hayzed"
+USERNAME = "21/52HL155"
+PASSWORD = "hayzed"
 
-USERNAME = "admin"
-PASSWORD = "raqibcodes"
+# USERNAME = "admin"
+# PASSWORD = "raqibcodes"
 
 # More robust path to the models directory
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
