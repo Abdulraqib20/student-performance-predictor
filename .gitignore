@@ -51,3 +51,5 @@ deploy.ps1
 .env
 .zip
 hayzed-new.zip
+.cursor
+.cursor/rules/custom-rule-1.mdc
