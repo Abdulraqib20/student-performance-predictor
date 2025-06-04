@@ -400,31 +400,44 @@ document.addEventListener('DOMContentLoaded', function () {
                         return;
                     }
 
-                    // Set actual value from dataset
+                    console.log("Dataset row data received:", data); // Debug log
+
+                    // Handle actual value from dataset
                     const actualValue = data.actual_value_from_dataset;
-                    if (actualValue) {
+                    if (actualValue !== null && actualValue !== undefined) {
                         actualValueInput.value = actualValue;
 
                         // Show actual value in badge
                         const actualValueBadge = document.getElementById('actualValueBadge');
                         if (actualValueBadge) {
-                            actualValueBadge.textContent = `Actual: ${actualValue === 'yes' ? 'PASS' : actualValue === 'no' ? 'FAIL' : actualValue}`;
+                            let displayValue = actualValue;
+                            if (actualValue === 'yes' || actualValue === 1 || actualValue === '1') {
+                                displayValue = 'PASS';
+                            } else if (actualValue === 'no' || actualValue === 0 || actualValue === '0') {
+                                displayValue = 'FAIL';
+                            }
+                            actualValueBadge.textContent = `Actual: ${displayValue}`;
                             actualValueBadge.style.display = 'inline-block';
                         }
-
-                        delete data.actual_value_from_dataset;
                     }
 
-                    // Fill in form fields
+                    // Fill in form fields - exclude metadata fields
+                    const excludeFields = ['error', 'row_index', 'total_rows', 'actual_value_from_dataset'];
+
                     for (const feature_name in data) {
-                        if (feature_name === 'error') continue;
+                        if (excludeFields.includes(feature_name)) continue;
 
                         const field = form.elements[feature_name];
-                        if (field && data[feature_name] !== null) {
+                        if (field && data[feature_name] !== null && data[feature_name] !== undefined) {
+                            console.log(`Setting field ${feature_name} to ${data[feature_name]}`); // Debug log
                             field.value = data[feature_name];
+
+                            // Trigger change event for select elements
                             if (field.tagName === 'SELECT') {
                                 field.dispatchEvent(new Event('change'));
                             }
+                        } else if (!field) {
+                            console.warn(`Field ${feature_name} not found in form`); // Debug log
                         }
                     }
 

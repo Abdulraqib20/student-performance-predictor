@@ -120,7 +120,7 @@
     }
     .user-message {
         background-color: var(--bs-primary);
-       
+
         margin-left: auto;
         border-bottom-right-radius: 0.2rem; /* Chat bubble tail */
     }
@@ -383,34 +383,82 @@
             <!-- AI INTERPRETATION BUTTON & SECTION -->
             <div class="text-center my-5">
                 <button id="getInterpretationBtn" class="btn btn-primary btn-lg">
-                    <i class="fas fa-brain me-2"></i>Get AI Interpretation
+                    <i class="fas fa-brain me-2"></i>Get Enhanced AI Interpretation
                 </button>
                 <div class="loading-spinner mt-3">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <p class="text-muted mt-2">Generating interpretation...</p>
+                    <p class="text-muted mt-2">Generating comprehensive interpretation with SHAP analysis...</p>
                 </div>
             </div>
             <div id="aiInterpretationSection" style="display:none;">
+
+                <!-- ADVANCED INTERPRETABILITY VISUALIZATIONS -->
+                <div id="interpretabilityVisualizations" class="mb-4" style="display:none;">
+
+                    <!-- Top Features Summary -->
+                    <div id="topFeaturesSection" class="card shadow-sm mb-4" style="display:none;">
+                        <div class="card-header text-center py-3">
+                            <h3 class="mb-0"><i class="fas fa-star me-2"></i>Top 5 Most Influential Features</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="topFeaturesList" class="row"></div>
+                        </div>
+                    </div>
+
+                    <!-- SHAP Waterfall Plot -->
+                    <div id="shapPlotSection" class="card shadow-sm mb-4" style="display:none;">
+                        <div class="card-header text-center py-3">
+                            <h3 class="mb-0"><i class="fas fa-chart-waterfall me-2"></i>SHAP Feature Impact Analysis</h3>
+                        </div>
+                        <div class="card-body text-center">
+                            <img id="shapPlotImage" class="img-fluid" alt="SHAP Feature Impact Plot" style="max-height: 500px;">
+                        </div>
+                    </div>
+
+                    <!-- Interactive SHAP Plot -->
+                    <div id="interactivePlotSection" class="card shadow-sm mb-4" style="display:none;">
+                        <div class="card-header text-center py-3">
+                            <h3 class="mb-0"><i class="fas fa-chart-area me-2"></i>Interactive Feature Impact Analysis</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="interactivePlot" style="height: 400px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Feature Insights -->
+                    <div id="featureInsightsSection" class="card shadow-sm mb-4" style="display:none;">
+                        <div class="card-header text-center py-3">
+                            <h3 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Key Feature Insights</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="featureInsightsList"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- AI EXPLANATION & CHAT -->
                 <div class="card shadow-sm ai-chat-card">
                     <div class="card-header text-center py-3">
-                        <h2 class="mb-0"><i class="fas fa-comments me-2"></i>AI Explanation & Chat</h2>
+                        <h2 class="mb-0"><i class="fas fa-comments me-2"></i>AI Expert Analysis & Chat</h2>
+                        <p class="text-muted mb-0 mt-2">Data-driven interpretation with quantitative analysis</p>
                     </div>
                     <div class="card-body p-lg-5 p-4">
                         <div id="chatMessagesContainer" class="chat-container mb-3"></div>
                         <div id="aiTypingIndicator" class="mb-2 ms-1" style="display: none; align-items: center;">
-                            <small class="text-muted me-2"><i>AI is thinking</i></small>
+                            <small class="text-muted me-2"><i>AI is analyzing with SHAP & LIME</i></small>
                             <div class="typing-indicator d-inline-block">
                                 <span></span><span></span><span></span>
                             </div>
                         </div>
                         <div class="input-group input-group-lg">
-                            <input type="text" id="followUpInput" class="form-control shadow-sm" placeholder="Ask a follow-up question...">
+                            <input type="text" id="followUpInput" class="form-control shadow-sm" placeholder="Ask about specific features or get recommendations...">
                             <button class="btn btn-primary shadow-sm" type="button" id="sendFollowUpButton"><i class="fas fa-paper-plane me-2"></i>Send</button>
                         </div>
                         <div class="form-text small text-muted mt-2 ms-1">
-                            You can ask the AI for clarifications or further details about its explanation.
+                            Ask about SHAP values, feature interactions, or get actionable recommendations.
                         </div>
                     </div>
                 </div>
@@ -443,14 +491,424 @@
         </div>
     </div>
 </div>
+
+<!-- AI ENHANCED SECTION - Full Width Outside Container -->
+<div id="aiInterpretationFullSection" style="display:none;" class="bg-light py-5 mt-5">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-12">
+
+                <!-- Enhanced AI Header -->
+                <div class="text-center mb-5">
+                    <h1 class="display-5 fw-bold text-primary mb-3">
+                        <i class="fas fa-robot me-3"></i>Enhanced AI Analysis & Expert Chat
+                    </h1>
+                    <p class="lead text-muted">Advanced machine learning interpretability with SHAP analysis and intelligent conversation</p>
+                    <div class="d-inline-flex align-items-center gap-3 mt-3 flex-wrap justify-content-center">
+                        <span class="badge bg-primary fs-6 px-3 py-2">
+                            <i class="fas fa-chart-line me-2"></i>Advanced Analytics
+                        </span>
+                        <span class="badge bg-success fs-6 px-3 py-2">
+                            <i class="fas fa-brain me-2"></i>AI-Powered Insights
+                        </span>
+                        <span class="badge bg-info fs-6 px-3 py-2">
+                            <i class="fas fa-comments me-2"></i>Interactive Chat
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Main AI Content Grid - Responsive Layout -->
+                <div class="row g-4">
+
+                    <!-- Top Section: AI Chat Interface (Prominent Position) -->
+                    <div class="col-12">
+                        <div class="card shadow-lg border-0 bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <div class="card-header border-0 text-white text-center py-4">
+                                <h2 class="mb-1 fw-bold"><i class="fas fa-comments me-3"></i>AI Expert Chat Assistant</h2>
+                                <p class="mb-0 opacity-75 fs-5">Get detailed explanations about your student performance prediction</p>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="row g-0">
+                                    <!-- Chat Messages Area - Takes up most space -->
+                                    <div class="col-lg-8 col-12">
+                                        <div class="chat-container" style="height: 500px; background: #f8f9fa;">
+                                            <div id="chatMessagesContainerEnhanced" class="h-100 overflow-auto p-4">
+                                                <!-- Welcome Message -->
+                                                <div class="text-center text-muted py-5">
+                                                    <i class="fas fa-robot fa-3x mb-3 opacity-50"></i>
+                                                    <h5>Welcome to AI Expert Analysis!</h5>
+                                                    <p>Click "Get AI Interpretation" to start analyzing your prediction with advanced AI insights.</p>
+                                                    <small class="text-muted">I can explain SHAP values, feature importance, recommendations, and answer specific questions about your results.</small>
+                                                </div>
+                                            </div>
+
+                                            <!-- Typing Indicator -->
+                                            <div id="aiTypingIndicatorEnhanced" class="px-4 py-3 border-top" style="display: none; background: #f8f9fa;">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="typing-indicator me-3">
+                                                        <span></span><span></span><span></span>
+                                                    </div>
+                                                    <small class="text-muted fw-bold">AI is analyzing your question with advanced interpretability...</small>
+                                                </div>
+                                            </div>
+
+                                            <!-- Chat Input -->
+                                            <div class="p-4 border-top bg-white">
+                                                <div class="input-group input-group-lg">
+                                                    <input type="text" id="followUpInputEnhanced" class="form-control border-0 shadow-sm"
+                                                           placeholder="Ask me about features, SHAP values, recommendations, or interpretations..."
+                                                           style="background: #f8f9fa; font-size: 1rem;">
+                                                    <button class="btn btn-primary btn-lg px-4" type="button" id="sendFollowUpButtonEnhanced">
+                                                        <i class="fas fa-paper-plane me-2"></i>Send
+                                                    </button>
+                                                </div>
+                                                <div class="mt-3 text-center">
+                                                    <small class="text-muted">
+                                                        💡 Try asking: "Why did the model predict this?" or "What can be improved?" or "Explain the top features"
+                                                    </small>
+                                                </div>
+                                                <!-- Quick Suggestion Buttons -->
+                                                <div class="mt-3 text-center" id="quickSuggestions">
+                                                    <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                                        <button class="btn btn-outline-primary btn-sm suggestion-btn" data-question="Explain why the model made this prediction">
+                                                            <i class="fas fa-question-circle me-1"></i>Why this prediction?
+                                                        </button>
+                                                        <button class="btn btn-outline-success btn-sm suggestion-btn" data-question="What are the most important features and why?">
+                                                            <i class="fas fa-star me-1"></i>Key features
+                                                        </button>
+                                                        <button class="btn btn-outline-info btn-sm suggestion-btn" data-question="What recommendations would you give to improve this student's performance?">
+                                                            <i class="fas fa-lightbulb me-1"></i>Recommendations
+                                                        </button>
+                                                        <button class="btn btn-outline-warning btn-sm suggestion-btn" data-question="How confident is this prediction and what could affect it?">
+                                                            <i class="fas fa-chart-line me-1"></i>Confidence & risks
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right Sidebar: Chat Info & Controls -->
+                                    <div class="col-lg-4 col-12 border-start border-light">
+                                        <div class="p-4 h-100 bg-white bg-opacity-10 text-white">
+                                            <h5 class="mb-4"><i class="fas fa-info-circle me-2"></i>Chat Information</h5>
+
+                                            <div class="mb-4">
+                                                <h6 class="fw-bold">Current Analysis:</h6>
+                                                <div id="chatStatus" class="small">
+                                                    <span class="badge bg-warning">Waiting for interpretation...</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-4">
+                                                <h6 class="fw-bold">Available Features:</h6>
+                                                <ul class="small list-unstyled">
+                                                    <li><i class="fas fa-check text-success me-2"></i>SHAP analysis</li>
+                                                    <li><i class="fas fa-check text-success me-2"></i>Feature importance</li>
+                                                    <li><i class="fas fa-check text-success me-2"></i>Recommendations</li>
+                                                    <li><i class="fas fa-check text-success me-2"></i>Interactive explanations</li>
+                                                    <li><i class="fas fa-check text-success me-2"></i>Follow-up questions</li>
+                                                </ul>
+                                            </div>
+
+                                            <div class="mb-4">
+                                                <h6 class="fw-bold">Chat Controls:</h6>
+                                                <div class="d-grid gap-2">
+                                                    <button id="clearChatButtonEnhanced" class="btn btn-outline-light btn-sm">
+                                                        <i class="fas fa-eraser me-2"></i>Clear Chat
+                                                    </button>
+                                                    <button id="exportChatButton" class="btn btn-outline-light btn-sm">
+                                                        <i class="fas fa-download me-2"></i>Export Chat
+                                                    </button>
+                                                    <a href="{{ url_for('enhanced_ai') }}" class="btn btn-outline-light btn-sm">
+                                                        <i class="fas fa-external-link-alt me-2"></i>Full AI Interface
+                                                    </a>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-auto">
+                                                <small class="opacity-75">
+                                                    <i class="fas fa-shield-alt me-1"></i>
+                                                    Powered by Groq AI with enhanced interpretability
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Section: Visualizations -->
+                    <div class="col-12">
+                        <!-- ADVANCED INTERPRETABILITY VISUALIZATIONS -->
+                        <div id="interpretabilityVisualizationsEnhanced" style="display:none;">
+
+                            <!-- Analysis Header -->
+                            <div class="text-center mb-4">
+                                <h3 class="fw-bold text-primary">
+                                    <i class="fas fa-chart-bar me-2"></i>Advanced Interpretability Analysis
+                                </h3>
+                                <p class="text-muted">Deep dive into how the AI model made its prediction</p>
+                            </div>
+
+                            <div class="row g-4">
+                                <!-- Top Features Summary -->
+                                <div class="col-lg-6">
+                                    <div id="topFeaturesSectionEnhanced" class="card shadow-sm h-100" style="display:none;">
+                                        <div class="card-header bg-primary text-white text-center py-3">
+                                            <h4 class="mb-0"><i class="fas fa-star me-2"></i>Top 5 Most Influential Features</h4>
+                                            <small class="opacity-75">SHAP values showing feature importance for this prediction</small>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div id="topFeaturesListEnhanced" class="row g-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Feature Insights -->
+                                <div class="col-lg-6">
+                                    <div id="featureInsightsSectionEnhanced" class="card shadow-sm h-100" style="display:none;">
+                                        <div class="card-header bg-warning text-dark text-center py-3">
+                                            <h4 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Key Feature Insights</h4>
+                                            <small class="opacity-75">Detailed interpretation of important factors</small>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div id="featureInsightsListEnhanced"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- SHAP Waterfall Plot -->
+                                <div class="col-12">
+                                    <div id="shapPlotSectionEnhanced" class="card shadow-sm" style="display:none;">
+                                        <div class="card-header bg-success text-white text-center py-3">
+                                            <h4 class="mb-0"><i class="fas fa-chart-waterfall me-2"></i>SHAP Feature Impact Analysis</h4>
+                                            <small class="opacity-75">How each feature pushes the prediction toward Pass or Fail</small>
+                                        </div>
+                                        <div class="card-body text-center p-4">
+                                            <img id="shapPlotImageEnhanced" class="img-fluid rounded" alt="SHAP Feature Impact Plot" style="max-height: 500px; border: 1px solid #dee2e6;">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Interactive SHAP Plot -->
+                                <div class="col-12">
+                                    <div id="interactivePlotSectionEnhanced" class="card shadow-sm" style="display:none;">
+                                        <div class="card-header bg-info text-white text-center py-3">
+                                            <h4 class="mb-0"><i class="fas fa-chart-area me-2"></i>Interactive Feature Impact Analysis</h4>
+                                            <small class="opacity-75">Explore feature relationships and impacts</small>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div id="interactivePlotEnhanced" style="height: 450px; border-radius: 8px; border: 1px solid #dee2e6;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="text-center mt-5">
+                    <div class="d-flex gap-3 justify-content-center flex-wrap">
+                        <button id="toggleVisualizationsBtn" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-chart-bar me-2"></i>Toggle Visualizations
+                        </button>
+                        <button id="exportAnalysisButton" class="btn btn-outline-success btn-lg">
+                            <i class="fas fa-download me-2"></i>Export Full Analysis
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-redo me-2"></i>New Prediction
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-11 col-xl-10">
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
+<!-- Include Plotly for interactive charts -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<!-- Enhanced Chat UI Styles -->
+<style>
+/* Enhanced chat messaging styles */
+.chat-container {
+    border-radius: 0.5rem;
+}
+
+.chat-container .mb-3:last-child {
+    margin-bottom: 1rem !important;
+}
+
+/* Typing indicator animation */
+.typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.typing-indicator span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #6c757d;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes typing {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Quick suggestion buttons */
+.suggestion-btn {
+    transition: all 0.3s ease;
+    border-radius: 1.5rem;
+    font-size: 0.875rem;
+    margin: 0.25rem;
+}
+
+.suggestion-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced message styling */
+.mb-3 .rounded-3 {
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.mb-3 .rounded-3:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat input enhancements */
+#followUpInputEnhanced:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Scroll bar styling for chat */
+#chatMessagesContainerEnhanced::-webkit-scrollbar {
+    width: 6px;
+}
+
+#chatMessagesContainerEnhanced::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#chatMessagesContainerEnhanced::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+#chatMessagesContainerEnhanced::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+    .col-lg-4 .border-start {
+        border-start: none !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .chat-container {
+        height: 400px !important;
+    }
+
+    .suggestion-btn {
+        font-size: 0.8rem;
+        padding: 0.375rem 0.75rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .display-5 {
+        font-size: 2rem;
+    }
+
+    .chat-container {
+        height: 350px !important;
+    }
+
+    #quickSuggestions .d-flex {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .suggestion-btn {
+        width: 100%;
+        max-width: 300px;
+    }
+}
+
+/* Loading and status animations */
+.badge {
+    transition: all 0.3s ease;
+}
+
+.badge.bg-info {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Enhanced card hover effects */
+.card.shadow-lg:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+/* Gradient background fixes for better text visibility */
+.bg-gradient .text-white {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const getInterpretationBtn = document.getElementById('getInterpretationBtn');
     const aiInterpretationSection = document.getElementById('aiInterpretationSection');
+    const interpretabilityVisualizations = document.getElementById('interpretabilityVisualizations');
     const chatMessagesContainer = document.getElementById('chatMessagesContainer');
     const aiTypingIndicator = document.getElementById('aiTypingIndicator');
     const loadingSpinner = document.querySelector('.loading-spinner');
@@ -474,6 +932,97 @@ document.addEventListener('DOMContentLoaded', function () {
         if (getInterpretationBtn) getInterpretationBtn.disabled = show;
     }
 
+    function displayTopFeatures(topFeatures) {
+        const topFeaturesSection = document.getElementById('topFeaturesSection');
+        const topFeaturesList = document.getElementById('topFeaturesList');
+
+        if (!topFeatures || topFeatures.length === 0) return;
+
+        topFeaturesList.innerHTML = '';
+
+        topFeatures.forEach((feature, index) => {
+            const impactColor = feature.direction === 'Positive' ? 'success' : 'danger';
+            const impactIcon = feature.direction === 'Positive' ? 'fa-arrow-up' : 'fa-arrow-down';
+
+            const featureCard = document.createElement('div');
+            featureCard.className = 'col-lg-6 col-md-12 mb-3';
+
+            featureCard.innerHTML = `
+                <div class="card border-${impactColor} h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title text-${impactColor} mb-0">
+                                <i class="fas ${impactIcon} me-2"></i>${feature.name}
+                            </h5>
+                            <span class="badge bg-${impactColor}">${feature.direction}</span>
+                        </div>
+                        <p class="card-text mb-2">
+                            <strong>Value:</strong> ${feature.value}<br>
+                            <strong>SHAP Impact:</strong> ${feature.impact.toFixed(4)}
+                        </p>
+                        <small class="text-muted">${feature.description}</small>
+                    </div>
+                </div>
+            `;
+
+            topFeaturesList.appendChild(featureCard);
+        });
+
+        topFeaturesSection.style.display = 'block';
+    }
+
+    function displayShapPlot(shapPlotBase64) {
+        const shapPlotSection = document.getElementById('shapPlotSection');
+        const shapPlotImage = document.getElementById('shapPlotImage');
+
+        if (!shapPlotBase64) return;
+
+        shapPlotImage.src = 'data:image/png;base64,' + shapPlotBase64;
+        shapPlotSection.style.display = 'block';
+    }
+
+    function displayInteractivePlot(plotlyJsonString) {
+        const interactivePlotSection = document.getElementById('interactivePlotSection');
+        const interactivePlotDiv = document.getElementById('interactivePlot');
+
+        if (!plotlyJsonString) return;
+
+        try {
+            const plotData = JSON.parse(plotlyJsonString);
+            Plotly.newPlot(interactivePlotDiv, plotData.data, plotData.layout, {
+                responsive: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+            });
+            interactivePlotSection.style.display = 'block';
+        } catch (error) {
+            console.error('Error displaying interactive plot:', error);
+        }
+    }
+
+    function displayFeatureInsights(featureInsights) {
+        const featureInsightsSection = document.getElementById('featureInsightsSection');
+        const featureInsightsList = document.getElementById('featureInsightsList');
+
+        if (!featureInsights || Object.keys(featureInsights).length === 0) return;
+
+        featureInsightsList.innerHTML = '';
+
+        Object.entries(featureInsights).forEach(([featureName, insight]) => {
+            const insightDiv = document.createElement('div');
+            insightDiv.className = 'alert alert-info border-start border-4 border-info';
+            insightDiv.innerHTML = `
+                <h6 class="alert-heading">
+                    <i class="fas fa-info-circle me-2"></i>${featureName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </h6>
+                <p class="mb-0">${insight}</p>
+            `;
+            featureInsightsList.appendChild(insightDiv);
+        });
+
+        featureInsightsSection.style.display = 'block';
+    }
+
     if (getInterpretationBtn) {
         getInterpretationBtn.addEventListener('click', function() {
             showLoading(true);
@@ -490,29 +1039,255 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert(data.error);
                     return;
                 }
-                if (aiInterpretationSection) aiInterpretationSection.style.display = 'block';
+
+                // Show enhanced AI section instead of original
+                const aiInterpretationFullSection = document.getElementById('aiInterpretationFullSection');
+                if (aiInterpretationFullSection) {
+                    aiInterpretationFullSection.style.display = 'block';
+
+                    // Scroll to the enhanced section
+                    setTimeout(() => {
+                        aiInterpretationFullSection.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }, 300);
+                } else {
+                    // Fallback to original section
+                    if (aiInterpretationSection) aiInterpretationSection.style.display = 'block';
+                }
+
                 if (getInterpretationBtn) getInterpretationBtn.style.display = 'none';
-                if (chatMessagesContainer) chatMessagesContainer.innerHTML = '';
-                appendMessage(data.interpretation, 'assistant');
+
+                // Display interpretability visualizations in enhanced section
+                const interpretabilityVisualizationsEnhanced = document.getElementById('interpretabilityVisualizationsEnhanced');
+                if (data.top_features || data.shap_plot || data.interactive_plot || data.feature_insights) {
+                    if (interpretabilityVisualizationsEnhanced) {
+                        interpretabilityVisualizationsEnhanced.style.display = 'block';
+
+                        if (data.top_features) {
+                            displayTopFeaturesEnhanced(data.top_features);
+                        }
+
+                        if (data.shap_plot) {
+                            displayShapPlotEnhanced(data.shap_plot);
+                        }
+
+                        if (data.interactive_plot) {
+                            displayInteractivePlotEnhanced(data.interactive_plot);
+                        }
+
+                        if (data.feature_insights) {
+                            displayFeatureInsightsEnhanced(data.feature_insights);
+                        }
+                    } else {
+                        // Fallback to original visualizations
+                        if (interpretabilityVisualizations) {
+                            interpretabilityVisualizations.style.display = 'block';
+                            if (data.top_features) displayTopFeatures(data.top_features);
+                            if (data.shap_plot) displayShapPlot(data.shap_plot);
+                            if (data.interactive_plot) displayInteractivePlot(data.interactive_plot);
+                            if (data.feature_insights) displayFeatureInsights(data.feature_insights);
+                        }
+                    }
+                }
+
+                // Display AI interpretation in enhanced chat
+                const chatMessagesContainerEnhanced = document.getElementById('chatMessagesContainerEnhanced');
+                const chatStatus = document.getElementById('chatStatus');
+
+                if (chatMessagesContainerEnhanced) {
+                    // Clear any existing welcome message
+                    chatMessagesContainerEnhanced.innerHTML = '';
+
+                    // Add initial context message
+                    appendMessageEnhanced("I've analyzed your student performance prediction. Here's my comprehensive interpretation:", 'assistant');
+                    appendMessageEnhanced(data.interpretation, 'assistant');
+
+                    // Update chat status
+                    if (chatStatus) {
+                        chatStatus.innerHTML = '<span class="badge bg-success">Analysis complete - Ready for questions</span>';
+                    }
+
+                    // Show quick suggestions after initial interpretation
+                    setTimeout(() => {
+                        const quickSuggestions = document.getElementById('quickSuggestions');
+                        if (quickSuggestions) {
+                            quickSuggestions.style.opacity = '0';
+                            setTimeout(() => {
+                                quickSuggestions.style.opacity = '1';
+                                quickSuggestions.style.transition = 'opacity 0.5s ease-in-out';
+                            }, 100);
+                        }
+                    }, 1000);
+                } else {
+                    // Fallback to original chat
+                    appendMessage(data.interpretation, 'assistant');
+                }
+
                 conversationHistory = data.conversation_history || [];
             })
             .catch(error => {
                 showLoading(false);
                 alert('Error getting AI interpretation: ' + error);
+                console.error('Error:', error);
             });
         });
     }
 
-    async function handleFollowUp() {
-        if (!followUpInput || !sendFollowUpButton || !chatMessagesContainer) return;
-        const messageText = followUpInput.value.trim();
-        if (!messageText) return;
+    // Enhanced UI Functions
+    function displayTopFeaturesEnhanced(topFeatures) {
+        const topFeaturesSection = document.getElementById('topFeaturesSectionEnhanced');
+        const topFeaturesList = document.getElementById('topFeaturesListEnhanced');
 
-        appendMessage(messageText, 'user');
-        followUpInput.value = '';
-        sendFollowUpButton.disabled = true;
-        followUpInput.disabled = true;
-        if(aiTypingIndicator) aiTypingIndicator.style.display = 'flex';
+        if (!topFeatures || topFeatures.length === 0) return;
+
+        topFeaturesList.innerHTML = '';
+
+        topFeatures.forEach((feature, index) => {
+            const impactColor = feature.direction === 'Positive' ? 'success' : 'danger';
+            const impactIcon = feature.direction === 'Positive' ? 'fa-arrow-up' : 'fa-arrow-down';
+
+            const featureCard = document.createElement('div');
+            featureCard.className = 'col-lg-6 col-md-12 mb-3';
+
+            featureCard.innerHTML = `
+                <div class="card border-${impactColor} h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title text-${impactColor} mb-0">
+                                <i class="fas ${impactIcon} me-2"></i>${feature.name}
+                            </h5>
+                            <span class="badge bg-${impactColor}">${feature.direction}</span>
+                        </div>
+                        <p class="card-text mb-2">
+                            <strong>Value:</strong> <span class="badge bg-light text-dark">${feature.value}</span><br>
+                            <strong>SHAP Impact:</strong> <span class="text-${impactColor} fw-bold">${feature.impact.toFixed(4)}</span>
+                        </p>
+                        <small class="text-muted">${feature.description}</small>
+                    </div>
+                </div>
+            `;
+
+            topFeaturesList.appendChild(featureCard);
+        });
+
+        topFeaturesSection.style.display = 'block';
+    }
+
+    function displayShapPlotEnhanced(shapPlotBase64) {
+        const shapPlotSection = document.getElementById('shapPlotSectionEnhanced');
+        const shapPlotImage = document.getElementById('shapPlotImageEnhanced');
+
+        if (!shapPlotBase64) return;
+
+        shapPlotImage.src = 'data:image/png;base64,' + shapPlotBase64;
+        shapPlotSection.style.display = 'block';
+    }
+
+    function displayInteractivePlotEnhanced(plotlyJsonString) {
+        const interactivePlotSection = document.getElementById('interactivePlotSectionEnhanced');
+        const interactivePlotDiv = document.getElementById('interactivePlotEnhanced');
+
+        if (!plotlyJsonString) return;
+
+        try {
+            const plotData = JSON.parse(plotlyJsonString);
+            Plotly.newPlot(interactivePlotDiv, plotData.data, plotData.layout, {
+                responsive: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+            });
+            interactivePlotSection.style.display = 'block';
+        } catch (error) {
+            console.error('Error displaying enhanced interactive plot:', error);
+        }
+    }
+
+    function displayFeatureInsightsEnhanced(featureInsights) {
+        const featureInsightsSection = document.getElementById('featureInsightsSectionEnhanced');
+        const featureInsightsList = document.getElementById('featureInsightsListEnhanced');
+
+        if (!featureInsights || Object.keys(featureInsights).length === 0) return;
+
+        featureInsightsList.innerHTML = '';
+
+        Object.entries(featureInsights).forEach(([featureName, insight]) => {
+            const insightDiv = document.createElement('div');
+            insightDiv.className = 'alert alert-info border-start border-4 border-info mb-3';
+            insightDiv.innerHTML = `
+                <h6 class="alert-heading">
+                    <i class="fas fa-info-circle me-2"></i>${featureName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </h6>
+                <p class="mb-0">${insight}</p>
+            `;
+            featureInsightsList.appendChild(insightDiv);
+        });
+
+        featureInsightsSection.style.display = 'block';
+    }
+
+    function appendMessageEnhanced(text, sender) {
+        const chatMessagesContainerEnhanced = document.getElementById('chatMessagesContainerEnhanced');
+        if (!chatMessagesContainerEnhanced) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `mb-3 d-flex ${sender === 'user' ? 'justify-content-end' : 'justify-content-start'}`;
+
+        const messageContent = document.createElement('div');
+        messageContent.className = `p-3 rounded-3 shadow-sm ${sender === 'user' ? 'bg-primary text-white' : 'bg-white border'}`;
+        messageContent.style.maxWidth = '85%';
+
+        if (sender === 'user') {
+            messageContent.innerHTML = `
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-user me-2 mt-1"></i>
+                    <div>
+                        <small class="fw-bold">You</small>
+                        <div class="mt-1">${text}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            messageContent.innerHTML = `
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-robot me-2 mt-1 text-primary"></i>
+                    <div>
+                        <small class="fw-bold text-primary">AI Assistant</small>
+                        <div class="mt-1" style="white-space: pre-wrap;">${text}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        messageDiv.appendChild(messageContent);
+        chatMessagesContainerEnhanced.appendChild(messageDiv);
+        chatMessagesContainerEnhanced.scrollTop = chatMessagesContainerEnhanced.scrollHeight;
+    }
+
+    // Enhanced follow-up handling with better context management
+    async function handleFollowUpEnhanced(messageText = null) {
+        const followUpInputEnhanced = document.getElementById('followUpInputEnhanced');
+        const sendFollowUpButtonEnhanced = document.getElementById('sendFollowUpButtonEnhanced');
+        const aiTypingIndicatorEnhanced = document.getElementById('aiTypingIndicatorEnhanced');
+        const chatStatus = document.getElementById('chatStatus');
+
+        if (!followUpInputEnhanced || !sendFollowUpButtonEnhanced) return;
+
+        // Use provided message or get from input
+        const finalMessageText = messageText || followUpInputEnhanced.value.trim();
+        if (!finalMessageText) return;
+
+        // Update chat status
+        if (chatStatus) {
+            chatStatus.innerHTML = '<span class="badge bg-info">Processing your question...</span>';
+        }
+
+        appendMessageEnhanced(finalMessageText, 'user');
+        followUpInputEnhanced.value = '';
+        sendFollowUpButtonEnhanced.disabled = true;
+        followUpInputEnhanced.disabled = true;
+        if (aiTypingIndicatorEnhanced) aiTypingIndicatorEnhanced.style.display = 'block';
 
         try {
             const response = await fetch("{{ url_for('chat_follow_up') }}", {
@@ -521,14 +1296,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    message: messageText
+                    message: finalMessageText
                 }),
             });
 
-            if(aiTypingIndicator) aiTypingIndicator.style.display = 'none';
-            sendFollowUpButton.disabled = false;
-            followUpInput.disabled = false;
-            followUpInput.focus();
+            if (aiTypingIndicatorEnhanced) aiTypingIndicatorEnhanced.style.display = 'none';
+            sendFollowUpButtonEnhanced.disabled = false;
+            followUpInputEnhanced.disabled = false;
+            followUpInputEnhanced.focus();
 
             if (!response.ok) {
                 let errorMsg = "Could not get a response from the AI.";
@@ -536,38 +1311,162 @@ document.addEventListener('DOMContentLoaded', function () {
                     const errorData = await response.json();
                     errorMsg = errorData.error || errorMsg;
                 } catch (e) { }
-                appendMessage("Error: " + errorMsg, 'assistant');
+                appendMessageEnhanced("Error: " + errorMsg, 'assistant');
                 console.error("Follow-up error:", response.status, response.statusText);
+
+                // Update chat status
+                if (chatStatus) {
+                    chatStatus.innerHTML = '<span class="badge bg-danger">Error occurred</span>';
+                }
                 return;
             }
 
             const data = await response.json();
             if (data.reply) {
-                appendMessage(data.reply, 'assistant');
-                conversationHistory = data.history;
+                appendMessageEnhanced(data.reply, 'assistant');
+                conversationHistory = data.history || conversationHistory;
+
+                // Update chat status
+                if (chatStatus) {
+                    chatStatus.innerHTML = '<span class="badge bg-success">Response received</span>';
+                }
             } else {
-                appendMessage("AI did not provide a reply.", 'assistant');
+                appendMessageEnhanced("AI did not provide a reply.", 'assistant');
+                if (chatStatus) {
+                    chatStatus.innerHTML = '<span class="badge bg-warning">Incomplete response</span>';
+                }
             }
         } catch (error) {
-            if(aiTypingIndicator) aiTypingIndicator.style.display = 'none';
-            sendFollowUpButton.disabled = false;
-            followUpInput.disabled = false;
-            appendMessage("Network error or server issue when trying to get AI response.", 'assistant');
+            if (aiTypingIndicatorEnhanced) aiTypingIndicatorEnhanced.style.display = 'none';
+            sendFollowUpButtonEnhanced.disabled = false;
+            followUpInputEnhanced.disabled = false;
+            appendMessageEnhanced("Network error or server issue when trying to get AI response.", 'assistant');
             console.error('Fetch error:', error);
+
+            // Update chat status
+            if (chatStatus) {
+                chatStatus.innerHTML = '<span class="badge bg-danger">Network error</span>';
+            }
         }
     }
 
-    if (sendFollowUpButton && followUpInput) {
-        sendFollowUpButton.addEventListener('click', handleFollowUp);
-        followUpInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                handleFollowUp();
+    // Enhanced event listeners
+    const sendFollowUpButtonEnhanced = document.getElementById('sendFollowUpButtonEnhanced');
+    const followUpInputEnhanced = document.getElementById('followUpInputEnhanced');
+
+    if (sendFollowUpButtonEnhanced && followUpInputEnhanced) {
+        sendFollowUpButtonEnhanced.addEventListener('click', () => handleFollowUpEnhanced());
+        followUpInputEnhanced.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleFollowUpEnhanced();
             }
         });
     }
 
-    if (chatMessagesContainer) {
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    // Quick suggestion buttons functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.suggestion-btn')) {
+            const button = e.target.closest('.suggestion-btn');
+            const question = button.getAttribute('data-question');
+            if (question) {
+                handleFollowUpEnhanced(question);
+            }
+        }
+    });
+
+    // Enhanced clear chat functionality
+    const clearChatButtonEnhanced = document.getElementById('clearChatButtonEnhanced');
+    if (clearChatButtonEnhanced) {
+        clearChatButtonEnhanced.addEventListener('click', function() {
+            const chatMessagesContainerEnhanced = document.getElementById('chatMessagesContainerEnhanced');
+            const chatStatus = document.getElementById('chatStatus');
+
+            if (chatMessagesContainerEnhanced) {
+                chatMessagesContainerEnhanced.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-robot fa-3x mb-3 opacity-50"></i>
+                        <h5>Chat Cleared Successfully!</h5>
+                        <p>Ready for new questions about your prediction analysis.</p>
+                        <small class="text-muted">Use the suggestion buttons below or ask your own questions.</small>
+                    </div>
+                `;
+            }
+
+            if (chatStatus) {
+                chatStatus.innerHTML = '<span class="badge bg-secondary">Chat cleared</span>';
+            }
+
+            conversationHistory = [];
+
+            // Clear server-side session data
+            fetch('/ai/clear_session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }).catch(error => console.warn('Could not clear server session:', error));
+        });
+    }
+
+    // Export chat functionality
+    const exportChatButton = document.getElementById('exportChatButton');
+    if (exportChatButton) {
+        exportChatButton.addEventListener('click', function() {
+            const chatMessagesContainerEnhanced = document.getElementById('chatMessagesContainerEnhanced');
+            if (!chatMessagesContainerEnhanced) return;
+
+            let exportContent = "Student Performance Prediction - AI Chat Export\n";
+            exportContent += "=" .repeat(50) + "\n\n";
+            exportContent += `Export Date: ${new Date().toLocaleString()}\n\n`;
+
+            // Extract conversation from DOM
+            const messages = chatMessagesContainerEnhanced.querySelectorAll('.mb-3');
+            messages.forEach(messageDiv => {
+                const content = messageDiv.textContent.trim();
+                if (content && !content.includes('Welcome to AI Expert Analysis')) {
+                    exportContent += content + "\n\n";
+                }
+            });
+
+            if (exportContent.length < 100) {
+                exportContent += "No chat conversation to export.\n";
+            }
+
+            // Create and download file
+            const blob = new Blob([exportContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `student_prediction_chat_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        });
+    }
+
+    // Toggle visualizations functionality
+    const toggleVisualizationsBtn = document.getElementById('toggleVisualizationsBtn');
+    if (toggleVisualizationsBtn) {
+        toggleVisualizationsBtn.addEventListener('click', function() {
+            const interpretabilityVisualizationsEnhanced = document.getElementById('interpretabilityVisualizationsEnhanced');
+            if (interpretabilityVisualizationsEnhanced) {
+                const isVisible = interpretabilityVisualizationsEnhanced.style.display !== 'none';
+                interpretabilityVisualizationsEnhanced.style.display = isVisible ? 'none' : 'block';
+
+                const icon = toggleVisualizationsBtn.querySelector('i');
+                const text = toggleVisualizationsBtn.childNodes[1];
+
+                if (isVisible) {
+                    icon.className = 'fas fa-chart-bar me-2';
+                    text.textContent = 'Show Visualizations';
+                } else {
+                    icon.className = 'fas fa-eye-slash me-2';
+                    text.textContent = 'Hide Visualizations';
+                }
+            }
+        });
     }
 });
 </script>

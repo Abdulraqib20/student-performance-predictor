@@ -25,6 +25,9 @@ from utils.preprocessing import (
     load_json_data
 )
 
+# Import the new interpretability module
+from utils.interpretability import create_model_interpreter, ModelInterpreter
+
 app = Flask(__name__)
 # It's crucial to set a secret key for session management.
 # In a real application, use a strong, randomly generated key and keep it secret.
@@ -154,14 +157,73 @@ fitted_numerical_cols = []    # List of numerical columns the scaler was FITTED 
 final_feature_order_from_training = [] # List of all feature columns in order model expects
 preprocessors_loaded_successfully = False
 
+# Global model interpreter instance
+model_interpreter = None
+
 # --- Groq API Configuration ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = "llama-3.1-8b-instant" # llama3-70b-8192 # "llama-3.3-70b-versatile"
 
 if not GROQ_API_KEY:
     print("WARNING: GROQ_API_KEY environment variable not set. AI interpretation will be disabled.")
-    # You could choose to raise an error or have a fallback.
-    # For now, it will just not provide interpretations.
+
+# Enhanced AI Chat Integration
+try:
+    from ai_chat_integration import (
+        AIIntegrationManager,
+        create_ai_integration_manager,
+        enhance_interpretation_route_response,
+        enhance_follow_up_route_response
+    )
+
+    # Initialize the enhanced AI integration manager
+    ai_integration_manager = create_ai_integration_manager(GROQ_API_KEY)
+    ENHANCED_AI_AVAILABLE = ai_integration_manager is not None
+
+    if ENHANCED_AI_AVAILABLE:
+        print("--- Enhanced AI Chat System Initialized Successfully ---")
+    else:
+        print("--- Enhanced AI Chat System Failed to Initialize - Using Basic AI ---")
+
+except ImportError as e:
+    print(f"Enhanced AI Chat modules not available: {e}")
+    ENHANCED_AI_AVAILABLE = False
+    ai_integration_manager = None
+except Exception as e:
+    print(f"Error initializing enhanced AI: {e}")
+    ENHANCED_AI_AVAILABLE = False
+    ai_integration_manager = None
+
+def initialize_model_interpreter():
+    """Initialize the advanced model interpreter after models and data are loaded."""
+    global model_interpreter
+
+    if not loaded_models or student_df is None:
+        print("Cannot initialize model interpreter: models or data not loaded")
+        return False
+
+    try:
+        # Prepare training data (first 100 rows for efficiency)
+        training_sample = student_df.drop('passed', axis=1).head(100) if 'passed' in student_df.columns else student_df.head(100)
+
+        # Get categorical feature names for encoding
+        categorical_features = CATEGORICAL_FEATURE_NAMES_FOR_ENCODING
+
+        # Create model interpreter
+        model_interpreter = create_model_interpreter(
+            models_dict=loaded_models,
+            training_data=training_sample,
+            feature_names=ALL_FEATURE_NAMES,
+            feature_descriptions=FEATURE_DESCRIPTIONS,
+            categorical_features=categorical_features,
+            preprocessors={'label_encoders': loaded_label_encoders, 'scaler': loaded_standard_scaler}
+        )
+
+        print("Advanced model interpreter initialized successfully!")
+        return True
+    except Exception as e:
+        print(f"Error initializing model interpreter: {e}")
+        return False
 
 def get_ai_interpretation(input_features: dict, feature_descriptions: dict, all_feature_names: list, prediction_outcome: str = None, conversation_history: list = None, follow_up_message: str = None) -> tuple[str, list]:
     """
@@ -218,7 +280,7 @@ def get_ai_interpretation(input_features: dict, feature_descriptions: dict, all_
             messages=messages_for_api_call,
             model=GROQ_MODEL,
             temperature=temperature_setting,
-            max_tokens=1500, # Max_tokens can be adjusted; 1500 is generous for initial, okay for follow-up.
+            max_tokens=2000, # Increased for more comprehensive interpretations
         )
         ai_response_content = chat_completion.choices[0].message.content
 
@@ -317,6 +379,8 @@ def load_all_models_on_startup():
         print(f"--- CRITICAL WARNING: No models were successfully loaded from {MODEL_DIR}. Predictions will not work. ---")
     else:
         print(f"--- Successfully loaded {len(loaded_models)} models. ---")
+        # Initialize the model interpreter after loading models
+        initialize_model_interpreter()
 
 # --- Run Startup Loaders ---
 load_all_preprocessors_on_startup()
@@ -640,110 +704,449 @@ Begin your detailed interpretation now:
 @app.route('/get_ai_interpretation', methods=['POST'])
 @login_required
 def get_ai_interpretation_route():
-    """New route to handle AI interpretation requests"""
-    if not session.get('last_predictions') or not session.get('last_features'):
-        return jsonify({"error": "No prediction data available for interpretation."}), 400
+    """Enhanced route to handle AI interpretation requests with advanced interpretability."""
+    global model_interpreter
 
-    predictions = session['last_predictions']
-    features = session['last_features']
+    try:
+        if not session.get('last_predictions') or not session.get('last_features'):
+            return jsonify({"error": "No prediction data available for interpretation."}), 400
 
-    # Find XGBoost model's prediction
-    xgb_pred = None
-    for pred in predictions:
-        if 'xgb' in pred['raw_name'].lower():
-            xgb_pred = pred
-            break
-    if not xgb_pred:
-        # fallback to first model if XGBoost not found
-        xgb_pred = predictions[0]
+        predictions = session['last_predictions']
+        features = session['last_features']
 
-    # Prepare all model predictions as context
-    all_model_preds = {p['name']: p['prediction'] for p in predictions}
+        # Find XGBoost model's prediction (primary model)
+        xgb_pred = None
+        primary_model_name = None
+        for pred in predictions:
+            if 'xgb' in pred['raw_name'].lower():
+                xgb_pred = pred
+                primary_model_name = pred['raw_name']
+                break
+        if not xgb_pred:
+            # fallback to first model if XGBoost not found
+            xgb_pred = predictions[0]
+            primary_model_name = predictions[0]['raw_name']
 
-    # Get the XGBoost prediction outcome
-    primary_prediction = xgb_pred['prediction']
+        # Prepare all model predictions as context
+        all_model_preds = {p['name']: p['prediction'] for p in predictions}
+        primary_prediction = xgb_pred['prediction']
 
-    # Compose the initial prompt
-    initial_prompt = custom_ai_prompt(features, FEATURE_DESCRIPTIONS, ALL_FEATURE_NAMES, primary_prediction, all_model_preds)
-    conversation_history = [{"role": "user", "content": initial_prompt}]
+        # Try enhanced AI system first
+        if ENHANCED_AI_AVAILABLE and ai_integration_manager:
+            try:
+                # Prepare interpretability data
+                interpretability_data = {}
+                if model_interpreter is not None:
+                    try:
+                        # Generate interpretability insights (existing code)
+                        processed_features = {}
+                        for feature_name in ALL_FEATURE_NAMES:
+                            processed_features[feature_name] = features.get(feature_name, 0)
 
-    # Call the AI
-    ai_interpretation_text, conversation_history = get_ai_interpretation(
-        input_features=features,
-        feature_descriptions=FEATURE_DESCRIPTIONS,
-        all_feature_names=ALL_FEATURE_NAMES,
-        prediction_outcome=primary_prediction,
-        conversation_history=conversation_history
-    )
+                        # Create feature array in correct order
+                        feature_array = []
+                        for feature_name in final_feature_order_from_training:
+                            if feature_name in CATEGORICAL_FEATURE_NAMES_FOR_ENCODING:
+                                if feature_name in loaded_label_encoders:
+                                    try:
+                                        encoded_value = loaded_label_encoders[feature_name].transform([processed_features[feature_name]])[0]
+                                        feature_array.append(encoded_value)
+                                    except:
+                                        feature_array.append(0)
+                                else:
+                                    feature_array.append(0)
+                            else:
+                                feature_value = processed_features[feature_name]
+                                if isinstance(feature_value, str):
+                                    try:
+                                        feature_value = float(feature_value)
+                                    except:
+                                        feature_value = 0
+                                feature_array.append(feature_value)
 
-    # Store conversation history in session
-    session['ai_conversation_history'] = conversation_history
+                        # Apply standard scaling to numerical features
+                        feature_array_scaled = np.array(feature_array).reshape(1, -1)
+                        if loaded_standard_scaler is not None:
+                            numerical_indices = [i for i, fname in enumerate(final_feature_order_from_training)
+                                               if fname in fitted_numerical_cols]
+                            if numerical_indices:
+                                numerical_features = feature_array_scaled[:, numerical_indices]
+                                scaled_numerical = loaded_standard_scaler.transform(numerical_features)
+                                for i, idx in enumerate(numerical_indices):
+                                    feature_array_scaled[0, idx] = scaled_numerical[0, i]
 
-    return jsonify({
-        "interpretation": ai_interpretation_text,
-        "conversation_history": conversation_history
-    })
+                        # Generate comprehensive interpretability report
+                        interpretability_report = model_interpreter.generate_comprehensive_report(
+                            instance_data=feature_array_scaled[0],
+                            instance_features=features,
+                            model_predictions=all_model_preds,
+                            primary_model_name=primary_model_name
+                        )
+
+                        # Convert all numpy types to Python native types for JSON serialization
+                        def convert_numpy_types_comprehensive(obj):
+                            """Recursively convert numpy types to native Python types."""
+                            if hasattr(obj, 'dtype'):  # numpy arrays and scalars
+                                if obj.dtype.kind in ['i', 'u']:  # integer types
+                                    return int(obj) if obj.ndim == 0 else obj.astype(int).tolist()
+                                elif obj.dtype.kind == 'f':  # floating point types
+                                    return float(obj) if obj.ndim == 0 else obj.astype(float).tolist()
+                                elif obj.dtype.kind == 'b':  # boolean types
+                                    return bool(obj) if obj.ndim == 0 else obj.astype(bool).tolist()
+                                else:
+                                    return obj.tolist() if hasattr(obj, 'tolist') else str(obj)
+                            elif isinstance(obj, dict):
+                                return {key: convert_numpy_types_comprehensive(value) for key, value in obj.items()}
+                            elif isinstance(obj, (list, tuple)):
+                                return [convert_numpy_types_comprehensive(item) for item in obj]
+                            else:
+                                return obj
+
+                        interpretability_report = convert_numpy_types_comprehensive(interpretability_report)
+                        interpretability_data = interpretability_report.get("interpretability_analysis", {})
+
+                    except Exception as e:
+                        print(f"Error generating interpretability data: {e}")
+                        interpretability_data = {}
+
+                # Use enhanced AI system
+                ai_interpretation_text, conversation_history, additional_data = ai_integration_manager.get_enhanced_ai_interpretation(
+                    features=features,
+                    feature_descriptions=FEATURE_DESCRIPTIONS,
+                    all_feature_names=ALL_FEATURE_NAMES,
+                    prediction_outcome=primary_prediction,
+                    all_model_preds=all_model_preds,
+                    interpretability_data=interpretability_data
+                )
+
+                # Store conversation history in session
+                session['ai_conversation_history'] = conversation_history
+
+                # Prepare base response data (existing visualization logic)
+                response_data = {}
+
+                # Add interpretability visualizations if available
+                if interpretability_data:
+                    # Add SHAP plot if available
+                    if "shap_plot" in interpretability_data:
+                        response_data["shap_plot"] = interpretability_data["shap_plot"]
+
+                    # Add interactive plot if available
+                    if "interactive_plot" in interpretability_data:
+                        response_data["interactive_plot"] = interpretability_data["interactive_plot"]
+
+                    # Add SHAP values summary
+                    if "shap" in interpretability_data and "feature_importance" in interpretability_data["shap"]:
+                        top_features = interpretability_data["shap"]["feature_importance"][:5]
+                        response_data["top_features"] = [
+                            {
+                                "name": feature.replace('_', ' ').title(),
+                                "value": features.get(feature, "N/A"),
+                                "impact": shap_value,
+                                "direction": "Positive" if shap_value > 0 else "Negative",
+                                "description": FEATURE_DESCRIPTIONS.get(feature, "No description available")
+                            }
+                            for feature, shap_value in top_features
+                        ]
+
+                    # Add feature insights
+                    if "feature_insights" in interpretability_data:
+                        response_data["feature_insights"] = interpretability_data["feature_insights"]
+
+                # Enhance response with AI metadata and suggestions
+                enhanced_response = enhance_interpretation_route_response(
+                    interpretation_text=ai_interpretation_text,
+                    conversation_history=conversation_history,
+                    additional_data=additional_data,
+                    base_response=response_data
+                )
+
+                return jsonify(enhanced_response)
+
+            except Exception as e:
+                print(f"Enhanced AI interpretation failed: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                # Fall back to original implementation below
+
+        # Original implementation as fallback
+        # Initialize basic prompt in case advanced interpretability fails
+        basic_prompt = custom_ai_prompt(features, FEATURE_DESCRIPTIONS, ALL_FEATURE_NAMES, primary_prediction, all_model_preds)
+
+        # Try to generate advanced interpretability report
+        interpretability_report = None
+        enhanced_prompt = basic_prompt
+
+        if model_interpreter is not None:
+            try:
+                # Prepare the instance data for interpretability analysis
+                # Convert features to the format expected by models
+                processed_features = {}
+                for feature_name in ALL_FEATURE_NAMES:
+                    processed_features[feature_name] = features.get(feature_name, 0)
+
+                # Create feature array in correct order
+                feature_array = []
+                for feature_name in final_feature_order_from_training:
+                    if feature_name in CATEGORICAL_FEATURE_NAMES_FOR_ENCODING:
+                        # Apply label encoding
+                        if feature_name in loaded_label_encoders:
+                            try:
+                                encoded_value = loaded_label_encoders[feature_name].transform([processed_features[feature_name]])[0]
+                                feature_array.append(encoded_value)
+                            except:
+                                feature_array.append(0)  # fallback
+                        else:
+                            feature_array.append(0)  # fallback
+                    else:
+                        # Numerical feature - apply scaling if needed
+                        feature_value = processed_features[feature_name]
+                        if isinstance(feature_value, str):
+                            try:
+                                feature_value = float(feature_value)
+                            except:
+                                feature_value = 0
+                        feature_array.append(feature_value)
+
+                # Apply standard scaling to numerical features
+                feature_array_scaled = np.array(feature_array).reshape(1, -1)
+                if loaded_standard_scaler is not None:
+                    # Scale only the numerical columns
+                    numerical_indices = [i for i, fname in enumerate(final_feature_order_from_training)
+                                       if fname in fitted_numerical_cols]
+                    if numerical_indices:
+                        numerical_features = feature_array_scaled[:, numerical_indices]
+                        scaled_numerical = loaded_standard_scaler.transform(numerical_features)
+                        for i, idx in enumerate(numerical_indices):
+                            feature_array_scaled[0, idx] = scaled_numerical[0, i]
+
+                # Generate comprehensive interpretability report
+                interpretability_report = model_interpreter.generate_comprehensive_report(
+                    instance_data=feature_array_scaled[0],
+                    instance_features=features,
+                    model_predictions=all_model_preds,
+                    primary_model_name=primary_model_name
+                )
+
+                # Convert all numpy types to Python native types for JSON serialization
+                def convert_numpy_types_comprehensive(obj):
+                    """Recursively convert numpy types to native Python types."""
+                    if hasattr(obj, 'dtype'):  # numpy arrays and scalars
+                        if obj.dtype.kind in ['i', 'u']:  # integer types
+                            return int(obj) if obj.ndim == 0 else obj.astype(int).tolist()
+                        elif obj.dtype.kind == 'f':  # floating point types
+                            return float(obj) if obj.ndim == 0 else obj.astype(float).tolist()
+                        elif obj.dtype.kind == 'b':  # boolean types
+                            return bool(obj) if obj.ndim == 0 else obj.astype(bool).tolist()
+                        else:
+                            return obj.tolist() if hasattr(obj, 'tolist') else str(obj)
+                    elif isinstance(obj, dict):
+                        return {key: convert_numpy_types_comprehensive(value) for key, value in obj.items()}
+                    elif isinstance(obj, (list, tuple)):
+                        return [convert_numpy_types_comprehensive(item) for item in obj]
+                    else:
+                        return obj
+
+                interpretability_report = convert_numpy_types_comprehensive(interpretability_report)
+
+                # Create enhanced AI prompt with interpretability data
+                enhanced_prompt = model_interpreter.create_enhanced_ai_prompt(interpretability_report)
+
+                print("Successfully generated advanced interpretability report")
+
+            except Exception as e:
+                print(f"Error generating interpretability report: {e}")
+                import traceback
+                traceback.print_exc()
+                print("Falling back to basic interpretation")
+        else:
+            print("Model interpreter not available, using basic interpretation")
+
+        # Create conversation history with the enhanced prompt
+        conversation_history = [{"role": "user", "content": enhanced_prompt}]
+
+        # Call the AI with enhanced prompt
+        ai_interpretation_text, conversation_history = get_ai_interpretation(
+            input_features=features,
+            feature_descriptions=FEATURE_DESCRIPTIONS,
+            all_feature_names=ALL_FEATURE_NAMES,
+            prediction_outcome=primary_prediction,
+            conversation_history=conversation_history
+        )
+
+        # Store conversation history in session
+        session['ai_conversation_history'] = conversation_history
+
+        # Prepare response with interpretability data
+        response_data = {
+            "interpretation": ai_interpretation_text,
+            "conversation_history": conversation_history
+        }
+
+        # Add interpretability visualizations if available
+        if interpretability_report and "interpretability_analysis" in interpretability_report:
+            analysis = interpretability_report["interpretability_analysis"]
+
+            # Add SHAP plot if available
+            if "shap_plot" in analysis:
+                response_data["shap_plot"] = analysis["shap_plot"]
+
+            # Add interactive plot if available
+            if "interactive_plot" in analysis:
+                response_data["interactive_plot"] = analysis["interactive_plot"]
+
+            # Add SHAP values summary
+            if "shap" in analysis and "feature_importance" in analysis["shap"]:
+                top_features = analysis["shap"]["feature_importance"][:5]
+                response_data["top_features"] = [
+                    {
+                        "name": feature.replace('_', ' ').title(),
+                        "value": features.get(feature, "N/A"),
+                        "impact": shap_value,
+                        "direction": "Positive" if shap_value > 0 else "Negative",
+                        "description": FEATURE_DESCRIPTIONS.get(feature, "No description available")
+                    }
+                    for feature, shap_value in top_features
+                ]
+
+            # Add feature insights
+            if "feature_insights" in analysis:
+                response_data["feature_insights"] = analysis["feature_insights"]
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        # Comprehensive error handling - always return JSON
+        error_message = f"An error occurred while generating AI interpretation: {str(e)}"
+        print(f"Critical error in get_ai_interpretation_route: {e}")
+        import traceback
+        traceback.print_exc()
+
+        return jsonify({
+            "error": error_message,
+            "interpretation": "Unable to generate AI interpretation due to a server error. Please try again.",
+            "conversation_history": [],
+            "enhanced_features_available": False
+        }), 500
 
 @app.route('/chat_follow_up', methods=['POST'])
 @login_required
 def chat_follow_up():
-    data = request.get_json()
-    follow_up_message = data.get('message')
+    try:
+        data = request.get_json()
+        follow_up_message = data.get('message') if data else None
 
-    # Get conversation history from session
-    conversation_history = session.get('ai_conversation_history', [])
-    features = session.get('last_features', {})
-    predictions = session.get('last_predictions', [])
+        # Get conversation history from session
+        conversation_history = session.get('ai_conversation_history', [])
+        features = session.get('last_features', {})
+        predictions = session.get('last_predictions', [])
 
-    # Handle missing conversation history by creating a new conversation
-    if not conversation_history and features and predictions:
-        # Find XGBoost model's prediction for a new conversation
-        xgb_pred = None
-        for pred in predictions:
-            if 'xgb' in pred['raw_name'].lower():
-                xgb_pred = pred
-                break
-        if not xgb_pred:
-            xgb_pred = predictions[0]
+        if not follow_up_message:
+            return jsonify({"error": "Missing message for follow-up."}), 400
 
-        all_model_preds = {p['name']: p['prediction'] for p in predictions}
-        primary_prediction = xgb_pred['prediction']
+        # Try enhanced AI system first
+        if ENHANCED_AI_AVAILABLE and ai_integration_manager and features and predictions:
+            try:
+                # Find XGBoost model's prediction
+                xgb_pred = None
+                for pred in predictions:
+                    if 'xgb' in pred['raw_name'].lower():
+                        xgb_pred = pred
+                        break
+                if not xgb_pred:
+                    xgb_pred = predictions[0]
 
-        # Create a new conversation with the same prompt as the initial interpretation
-        initial_prompt = custom_ai_prompt(features, FEATURE_DESCRIPTIONS, ALL_FEATURE_NAMES,
-                                        primary_prediction, all_model_preds)
-        conversation_history = [{"role": "user", "content": initial_prompt}]
+                all_model_preds = {p['name']: p['prediction'] for p in predictions}
+                primary_prediction = xgb_pred['prediction']
 
-        # Add a system message to explain what happened
-        conversation_history.append({
-            "role": "system",
-            "content": "Previous conversation not found. Starting a new conversation."
+                # Use enhanced follow-up system
+                ai_response_text, updated_history, additional_data = ai_integration_manager.get_enhanced_follow_up_response(
+                    follow_up_message=follow_up_message,
+                    conversation_history=conversation_history,
+                    features=features,
+                    feature_descriptions=FEATURE_DESCRIPTIONS,
+                    all_model_preds=all_model_preds,
+                    prediction_outcome=primary_prediction
+                )
+
+                # Update conversation history in session
+                session['ai_conversation_history'] = updated_history
+
+                # Return enhanced response
+                enhanced_response = enhance_follow_up_route_response(
+                    reply_text=ai_response_text,
+                    conversation_history=updated_history,
+                    additional_data=additional_data
+                )
+
+                return jsonify(enhanced_response)
+
+            except Exception as e:
+                print(f"Enhanced follow-up failed: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                # Fall back to original implementation below
+
+        # Original implementation as fallback
+        # Handle missing conversation history by creating a new conversation
+        if not conversation_history and features and predictions:
+            # Find XGBoost model's prediction for a new conversation
+            xgb_pred = None
+            for pred in predictions:
+                if 'xgb' in pred['raw_name'].lower():
+                    xgb_pred = pred
+                    break
+            if not xgb_pred:
+                xgb_pred = predictions[0]
+
+            all_model_preds = {p['name']: p['prediction'] for p in predictions}
+            primary_prediction = xgb_pred['prediction']
+
+            # Create a new conversation with the same prompt as the initial interpretation
+            initial_prompt = custom_ai_prompt(features, FEATURE_DESCRIPTIONS, ALL_FEATURE_NAMES,
+                                            primary_prediction, all_model_preds)
+            conversation_history = [{"role": "user", "content": initial_prompt}]
+
+            # Add a system message to explain what happened
+            conversation_history.append({
+                "role": "system",
+                "content": "Previous conversation not found. Starting a new conversation."
+            })
+
+        if not conversation_history:
+            return jsonify({"error": "No conversation data available. Please refresh the page and try again."}), 400
+
+        if not features:
+            return jsonify({"error": "No feature data available for context. Please refresh the page and try again."}), 400
+
+        ai_response_text, updated_history = get_ai_interpretation(
+            input_features=features,
+            feature_descriptions=FEATURE_DESCRIPTIONS,
+            all_feature_names=ALL_FEATURE_NAMES,
+            conversation_history=conversation_history,
+            follow_up_message=follow_up_message
+        )
+
+        # Update conversation history in session
+        session['ai_conversation_history'] = updated_history
+
+        return jsonify({
+            "reply": ai_response_text,
+            "history": updated_history
         })
 
-    if not follow_up_message:
-        return jsonify({"error": "Missing message for follow-up."}), 400
+    except Exception as e:
+        # Comprehensive error handling - always return JSON
+        error_message = f"An error occurred while processing follow-up: {str(e)}"
+        print(f"Critical error in chat_follow_up: {e}")
+        import traceback
+        traceback.print_exc()
 
-    if not conversation_history:
-        return jsonify({"error": "No conversation data available. Please refresh the page and try again."}), 400
-
-    if not features:
-        return jsonify({"error": "No feature data available for context. Please refresh the page and try again."}), 400
-
-    ai_response_text, updated_history = get_ai_interpretation(
-        input_features=features,
-        feature_descriptions=FEATURE_DESCRIPTIONS,
-        all_feature_names=ALL_FEATURE_NAMES,
-        conversation_history=conversation_history,
-        follow_up_message=follow_up_message
-    )
-
-    # Update conversation history in session
-    session['ai_conversation_history'] = updated_history
-
-    return jsonify({
-        "reply": ai_response_text,
-        "history": updated_history
-    })
+        return jsonify({
+            "error": error_message,
+            "reply": "Unable to process your message due to a server error. Please try again.",
+            "history": session.get('ai_conversation_history', [])
+        }), 500
 
 @app.route('/generate_random_input')
 @login_required
@@ -775,54 +1178,214 @@ def generate_random_input():
 @app.route('/get_dataset_row/<int:row_index>')
 @login_required
 def get_dataset_row(row_index):
-    if student_df is None:
-        return jsonify({"error": "Dataset not loaded."}), 500
-    if not 0 <= row_index < len(student_df):
-        return jsonify({"error": f"Row index out of bounds. Please select a row between 0 and {len(student_df) - 1}."}), 400
+    """Fetch a specific row from the student dataset."""
+    try:
+        if student_df is None or student_df.empty:
+            return jsonify({"error": "Dataset not available."}), 500
+
+        if row_index < 0 or row_index >= len(student_df):
+            return jsonify({"error": f"Row index {row_index} is out of range. Dataset has {len(student_df)} rows."}), 400
+
+        row_data = student_df.iloc[row_index].to_dict()
+
+        # Convert numpy types to Python native types for JSON serialization
+        for key, value in row_data.items():
+            if hasattr(value, 'item'):  # numpy types have .item() method
+                row_data[key] = value.item()
+
+        # Extract and handle the actual outcome (target variable)
+        actual_value_from_dataset = None
+        if 'passed' in row_data:
+            actual_value_from_dataset = row_data.pop('passed')  # Remove from row_data to avoid form field conflicts
+
+        # Prepare the response with proper structure
+        response_data = row_data.copy()
+        response_data['row_index'] = row_index
+        response_data['total_rows'] = len(student_df)
+        response_data['actual_value_from_dataset'] = actual_value_from_dataset
+
+        return jsonify(response_data)
+    except Exception as e:
+        return jsonify({"error": f"Error fetching row {row_index}: {str(e)}"}), 500
+
+# Enhanced AI Routes
+@app.route('/ai/preferences', methods=['GET', 'POST'])
+@login_required
+def ai_preferences():
+    """Manage AI user preferences."""
+    if not ENHANCED_AI_AVAILABLE or not ai_integration_manager:
+        return jsonify({"error": "Enhanced AI features not available"}), 503
+
+    if request.method == 'GET':
+        # Return current preferences and available options
+        preferences_ui_data = ai_integration_manager.get_user_preferences_ui_data()
+        current_preferences = session.get('ai_user_preferences', {})
+
+        return jsonify({
+            "current_preferences": current_preferences,
+            "options": preferences_ui_data
+        })
+
+    elif request.method == 'POST':
+        # Update preferences
+        data = request.get_json()
+        preferences = data.get('preferences', {})
+
+        success = ai_integration_manager.update_user_preferences(preferences)
+
+        if success:
+            session['ai_user_preferences'] = preferences
+            return jsonify({"success": True, "message": "Preferences updated successfully"})
+        else:
+            return jsonify({"error": "Failed to update preferences"}), 400
+
+
+@app.route('/ai/session_insights')
+@login_required
+def ai_session_insights():
+    """Get insights about the current AI chat session."""
+    if not ENHANCED_AI_AVAILABLE or not ai_integration_manager:
+        return jsonify({"error": "Enhanced AI features not available"}), 503
+
+    insights = ai_integration_manager.get_session_insights()
+    return jsonify(insights)
+
+
+@app.route('/ai/clear_session', methods=['POST'])
+@login_required
+def ai_clear_session():
+    """Clear AI session data."""
+    if not ENHANCED_AI_AVAILABLE or not ai_integration_manager:
+        return jsonify({"error": "Enhanced AI features not available"}), 503
+
+    ai_integration_manager.clear_session_data()
+    return jsonify({"success": True, "message": "Session data cleared"})
+
+
+@app.route('/ai/custom_query', methods=['POST'])
+@login_required
+def ai_custom_query():
+    """Handle custom AI queries with enhanced features."""
+    if not ENHANCED_AI_AVAILABLE or not ai_integration_manager:
+        return jsonify({"error": "Enhanced AI features not available"}), 503
+
+    if not session.get('last_predictions') or not session.get('last_features'):
+        return jsonify({"error": "No prediction data available for interpretation."}), 400
+
+    data = request.get_json()
+    custom_query = data.get('query', '').strip()
+
+    if not custom_query:
+        return jsonify({"error": "Query is required"}), 400
 
     try:
-        row_data = student_df.iloc[row_index].copy() # Use .copy() to avoid SettingWithCopyWarning on potential modifications
+        predictions = session['last_predictions']
+        features = session['last_features']
 
-        # Convert numpy types to native Python types for JSON serialization
-        for col, value in row_data.items():
-            if isinstance(value, np.integer):
-                row_data[col] = int(value)
-            elif isinstance(value, np.floating):
-                row_data[col] = float(value)
-            elif isinstance(value, np.bool_):
-                 row_data[col] = bool(value)
+        # Find primary model prediction
+        xgb_pred = None
+        for pred in predictions:
+            if 'xgb' in pred['raw_name'].lower():
+                xgb_pred = pred
+                break
+        if not xgb_pred:
+            xgb_pred = predictions[0]
 
-        # The target variable in student-data.csv is 'passed'
-        # We need to include this to be sent to the client, so it can be stored and sent back with predict.
-        # It's not an input feature itself for the model.
-        response_data = row_data.to_dict()
+        all_model_preds = {p['name']: p['prediction'] for p in predictions}
+        primary_prediction = xgb_pred['prediction']
 
-        # Ensure all ALL_FEATURE_NAMES are present, even if some are not in the CSV (though they should be)
-        # And add the 'passed' column specifically for the actual value comparison
-        final_response = {}
-        for feature in ALL_FEATURE_NAMES:
-            final_response[feature] = response_data.get(feature)
+        # Use enhanced AI system with custom query
+        ai_interpretation_text, conversation_history, additional_data = ai_integration_manager.get_enhanced_ai_interpretation(
+            features=features,
+            feature_descriptions=FEATURE_DESCRIPTIONS,
+            all_feature_names=ALL_FEATURE_NAMES,
+            prediction_outcome=primary_prediction,
+            all_model_preds=all_model_preds,
+            custom_query=custom_query
+        )
 
-        if 'passed' in response_data: # This is the target variable
-            final_response['actual_value_from_dataset'] = response_data['passed']
-        else:
-            # This case should ideally not happen if 'passed' is always in your CSV
-            final_response['actual_value_from_dataset'] = None
-            print(f"Warning: 'passed' column not found in dataset row {row_index}")
+        # Store conversation history in session
+        session['ai_conversation_history'] = conversation_history
 
-        return jsonify(final_response)
+        # Return enhanced response
+        response_data = {
+            "interpretation": ai_interpretation_text,
+            "conversation_history": conversation_history,
+            "ai_metadata": {
+                "model_used": additional_data.get("model_used"),
+                "confidence_score": additional_data.get("confidence_score"),
+                "response_time": additional_data.get("response_time"),
+                "explanation_level": additional_data.get("explanation_level"),
+                "tokens_used": additional_data.get("tokens_used")
+            },
+            "suggested_follow_ups": additional_data.get("suggested_follow_ups", []),
+            "enhanced_features_available": True
+        }
+
+        return jsonify(response_data)
+
     except Exception as e:
-        print(f"Error in /get_dataset_row for index {row_index}: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": "Failed to retrieve or process dataset row."}), 500
+        return jsonify({"error": f"Error processing custom query: {str(e)}"}), 500
 
-# if __name__ == '__main__':
-#     # Ensure the app is run from the root directory or adjust path to data/models if needed
-#     # For example, if running from src/ -> python app.py
-#     # The MODEL_DIR is already ../models
-#     app.run(debug=True)
+
+@app.route('/ai/model_info')
+@login_required
+def ai_model_info():
+    """Get information about available AI models and capabilities."""
+    if not ENHANCED_AI_AVAILABLE or not ai_integration_manager:
+        return jsonify({"error": "Enhanced AI features not available"}), 503
+
+    model_info = {
+        "enhanced_ai_available": True,
+        "available_models": {
+            "llama-3.1-8b-instant": {
+                "name": "Llama 3.1 8B Instant",
+                "description": "Fast model for simple queries",
+                "max_tokens": 8192,
+                "speed": "fastest",
+                "best_for": ["simple questions", "quick summaries", "basic explanations"]
+            },
+            "llama-3.1-70b-versatile": {
+                "name": "Llama 3.1 70B Versatile",
+                "description": "Balanced model for most queries",
+                "max_tokens": 8192,
+                "speed": "fast",
+                "best_for": ["detailed analysis", "complex questions", "comprehensive explanations"]
+            },
+            "llama-3.3-70b-versatile": {
+                "name": "Llama 3.3 70B Versatile",
+                "description": "Advanced model for complex analysis",
+                "max_tokens": 32768,
+                "speed": "moderate",
+                "best_for": ["expert-level analysis", "research questions", "technical deep-dives"]
+            },
+            "mixtral-8x7b-32768": {
+                "name": "Mixtral 8x7B",
+                "description": "Mixture of experts model",
+                "max_tokens": 32768,
+                "speed": "fast",
+                "best_for": ["multi-faceted analysis", "complex reasoning", "technical explanations"]
+            }
+        },
+        "features": [
+            "Dynamic model selection based on query complexity",
+            "Adaptive prompting based on user expertise level",
+            "Intelligent conversation memory management",
+            "Context-aware response generation",
+            "Smart follow-up suggestions",
+            "User preference adaptation",
+            "Confidence scoring",
+            "Response time optimization"
+        ]
+    }
+
+    return jsonify(model_info)
+
+@app.route('/enhanced_ai')
+@login_required
+def enhanced_ai():
+    """Route for the enhanced AI chat interface."""
+    return render_template('enhanced_ai_interface.html')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
