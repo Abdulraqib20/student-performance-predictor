@@ -1387,5 +1387,6 @@ def enhanced_ai():
     """Route for the enhanced AI chat interface."""
     return render_template('enhanced_ai_interface.html')
 
+# Only run the server if this file is executed directly (not under Gunicorn)
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT")), debug=True)
