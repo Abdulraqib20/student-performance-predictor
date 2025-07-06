@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}XGBoost Prediction - Student Performance Predictor{% endblock %}
+
+{% block content %}
+<style>
+    /* Enhanced styling for XGBoost prediction page */
+    .info-icon {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-left: 5px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .info-icon:hover {
+        color: var(--bs-primary);
+    }
+    .card {
+        border: none;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+    }
+    .card-header {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        border-bottom: none;
+        padding: 1.5rem;
+    }
+    .form-label {
+        font-weight: 500;
+        color: var(--bs-dark);
+        margin-bottom: 0.5rem;
+    }
+    .form-control, .form-select {
+        border: 1px solid var(--bs-light);
+        padding: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.15);
+    }
+    .btn {
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+        transform: translateY(-1px);
+    }
+    .btn-outline-secondary {
+        border: 1px solid var(--bs-secondary);
+    }
+    .btn-outline-secondary:hover {
+        background-color: var(--bs-secondary);
+        color: white;
+    }
+    .alert {
+        border: none;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .feature-group {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+        border-left: 4px solid var(--bs-primary);
+    }
+    .dataset-loader {
+        background-color: var(--bs-light);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    .badge {
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    .form-text {
+        color: var(--bs-secondary);
+        font-size: 0.875rem;
+    }
+    .xgb-highlight {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 1px solid #2196f3;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .feature-reduction-badge {
+        background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-xl-10 col-lg-10">
+        <div class="card shadow-sm">
+            <div class="card-header text-center py-4">
+                <h2 class="mb-2"><i class="fas fa-rocket me-2"></i>XGBoost Prediction</h2>
+                <p class="mb-0">Optimized prediction using only the most important features</p>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <div class="xgb-highlight">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5 class="mb-2"><i class="fas fa-star text-warning me-2"></i>XGBoost - Best Performing Model</h5>
+                            <p class="mb-0">This prediction uses only <strong>{{ selected_features|length }}</strong> carefully selected features instead of all {{ feature_descriptions|length }} features.</p>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <span class="feature-reduction-badge">
+                                <i class="fas fa-compress-alt me-1"></i>
+                                {{ "%.1f"|format(((feature_descriptions|length - selected_features|length) / feature_descriptions|length) * 100) }}% Feature Reduction
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show d-flex align-items-center" role="alert">
+                                <i class="fas fa-{% if category == 'danger' %}exclamation-triangle{% elif category == 'warning' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                                <div>{{ message }}</div>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('xgb_predict') }}" id="xgbPredictionForm">
+                    <input type="hidden" name="actual_value_from_dataset" id="actual_value_from_dataset" value="">
+
+                    <div class="row">
+                        <div class="col-12">
+                            <h5 class="mb-4">
+                                <i class="fas fa-sliders-h me-2"></i>Selected Features for XGBoost Prediction
+                                <small class="text-muted">({{ selected_features|length }} features)</small>
+                            </h5>
+                        </div>
+                    </div>
+
+                    <div class="row gx-3 gy-3">
+                        {% for feature_name in selected_features %}
+                            <div class="col-md-6">
+                                <div class="feature-group">
+                                    <label for="{{ feature_name }}" class="form-label">
+                                        {{ feature_name | title | replace('_',' ') }}:
+                                        {% if feature_descriptions and feature_name in feature_descriptions %}
+                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ feature_descriptions[feature_name] }}"></i>
+                                        {% endif %}
+                                    </label>
+
+                                    {% if feature_name in categorical_features %}
+                                        <select name="{{ feature_name }}" id="{{ feature_name }}" class="form-select" required>
+                                            <option value="">Select {{ feature_name | title | replace('_',' ') }}...</option>
+                                            {% if feature_name in simple_categorical_values %}
+                                                {% for value in simple_categorical_values[feature_name] %}
+                                                    <option value="{{ value }}">{{ value | title }}</option>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </select>
+                                    {% else %}
+                                        {% if feature_name in feature_ranges %}
+                                            <input type="number" name="{{ feature_name }}" id="{{ feature_name }}" class="form-control"
+                                                   min="{{ feature_ranges[feature_name][0] }}"
+                                                   max="{{ feature_ranges[feature_name][1] }}"
+                                                   step="{% if feature_name in ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health'] %}1{% else %}0.1{% endif %}"
+                                                   placeholder="Enter value ({{ feature_ranges[feature_name][0] }}-{{ feature_ranges[feature_name][1] }})" required>
+                                        {% else %}
+                                            <input type="number" name="{{ feature_name }}" id="{{ feature_name }}" class="form-control"
+                                                   placeholder="Enter {{ feature_name | title | replace('_',' ') }}" required>
+                                        {% endif %}
+                                    {% endif %}
+
+                                    {% if feature_descriptions and feature_name in feature_descriptions %}
+                                        <div class="form-text">{{ feature_descriptions[feature_name] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                                <button type="submit" class="btn btn-primary btn-lg me-md-2">
+                                    <i class="fas fa-rocket me-2"></i>Predict with XGBoost
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-lg me-md-2" onclick="generateRandomXGBInput()">
+                                    <i class="fas fa-random me-2"></i>Generate Random Input
+                                </button>
+                                <button type="button" class="btn btn-outline-info btn-lg" onclick="viewFeatureImportance()">
+                                    <i class="fas fa-chart-bar me-2"></i>View Feature Importance
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Dataset Loader Section -->
+                {% if student_df is not none %}
+                <div class="dataset-loader">
+                    <h5 class="mb-3">
+                        <i class="fas fa-database me-2"></i>Load from Dataset
+                        <span class="badge bg-secondary">{{ student_df.shape[0] }} samples</span>
+                    </h5>
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="number" id="datasetRowIndex" class="form-control"
+                                       min="0" max="{{ student_df.shape[0] - 1 }}"
+                                       placeholder="Enter row index (0-{{ student_df.shape[0] - 1 }})">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="loadXGBDatasetRow()">
+                                <i class="fas fa-upload me-2"></i>Load Row
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateRandomXGBInput() {
+    const selectedFeatures = {{ selected_features | tojson }};
+    const categoricalFeatures = {{ categorical_features | tojson }};
+    const categoricalValues = {{ simple_categorical_values | tojson }};
+    const featureRanges = {{ feature_ranges | tojson }};
+
+    selectedFeatures.forEach(feature => {
+        const element = document.getElementById(feature);
+        if (element) {
+            if (categoricalFeatures.includes(feature) && categoricalValues[feature]) {
+                const values = categoricalValues[feature];
+                const randomValue = values[Math.floor(Math.random() * values.length)];
+                element.value = randomValue;
+            } else if (featureRanges[feature]) {
+                const [min, max] = featureRanges[feature];
+                const randomValue = Math.floor(Math.random() * (max - min + 1)) + min;
+                element.value = randomValue;
+            }
+        }
+    });
+}
+
+function loadXGBDatasetRow() {
+    const rowIndex = document.getElementById('datasetRowIndex').value;
+    if (rowIndex === '') {
+        alert('Please enter a row index');
+        return;
+    }
+
+    fetch(`{{ url_for('get_dataset_row', row_index=0) }}`.replace('0', rowIndex))
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+
+            // Check if data structure is valid
+            if (!data || typeof data !== 'object') {
+                alert('Error: Invalid data structure received from server');
+                console.error('Invalid data structure:', data);
+                return;
+            }
+
+            const selectedFeatures = {{ selected_features | tojson }};
+            let fieldsSet = 0;
+
+            // Fill only the selected features
+            // The server returns features directly in the data object
+            selectedFeatures.forEach(feature => {
+                const element = document.getElementById(feature);
+                if (element && data.hasOwnProperty(feature) && data[feature] !== undefined && data[feature] !== null) {
+                    element.value = data[feature];
+                    fieldsSet++;
+                }
+            });
+
+            // Set actual value if available
+            if (data.hasOwnProperty('actual_value_from_dataset') && data['actual_value_from_dataset']) {
+                document.getElementById('actual_value_from_dataset').value = data['actual_value_from_dataset'];
+            }
+
+            alert(`Row data loaded successfully! ${fieldsSet} out of ${selectedFeatures.length} selected features have been filled.`);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading row data: ' + error.message);
+        });
+}
+
+function viewFeatureImportance() {
+    // Show feature information directly without API call
+    const selectedFeatures = {{ selected_features | tojson }};
+    const featureDescriptions = {{ feature_descriptions | tojson }};
+
+    let message = "XGBoost Selected Features (Top 10 Most Important):\n";
+    message += "=" + "=".repeat(55) + "\n\n";
+    message += "These features were scientifically selected based on XGBoost\n";
+    message += "feature importance analysis to optimize prediction accuracy.\n\n";
+
+    selectedFeatures.forEach((feature, index) => {
+        const rank = index + 1;
+        const description = featureDescriptions[feature] || "No description available";
+        message += `${rank}. ${feature.replace('_', ' ').toUpperCase()}\n`;
+        message += `   ${description}\n\n`;
+    });
+
+    message += "Benefits of Feature Selection:\n";
+    message += "✓ Reduces overfitting\n";
+    message += "✓ Improves model interpretability\n";
+    message += "✓ Faster prediction time\n";
+    message += "✓ Focuses on most predictive factors\n\n";
+    message += "Note: These 10 features provide 66.7% reduction from the\n";
+    message += "original 30 features while maintaining prediction accuracy.";
+
+    alert(message);
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}XGBoost Prediction Result - Student Performance Predictor{% endblock %}
+
+{% block content %}
+<style>
+    .result-card {
+        border: none;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease;
+    }
+    .result-card:hover {
+        transform: translateY(-2px);
+    }
+    .prediction-header {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+    .prediction-pass {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    .prediction-fail {
+        background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+    }
+    .probability-bar {
+        height: 20px;
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+    }
+    .probability-fill {
+        height: 100%;
+        transition: width 0.5s ease;
+    }
+    .probability-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    .feature-value {
+        background-color: var(--bs-light);
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        font-weight: 500;
+    }
+    .feature-item {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background-color: white;
+        border-radius: 0.5rem;
+        border-left: 4px solid var(--bs-primary);
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+    }
+    .optimization-badge {
+        background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .performance-metric {
+        text-align: center;
+        padding: 1rem;
+        background-color: var(--bs-light);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .performance-metric h6 {
+        margin-bottom: 0.5rem;
+        color: var(--bs-secondary);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .performance-metric .value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--bs-primary);
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Prediction Result Card -->
+            <div class="card result-card mb-4">
+                <div class="prediction-header {{ 'prediction-pass' if prediction.prediction == 'Pass' else 'prediction-fail' }}">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="mb-2">
+                                <i class="fas fa-{{ 'check-circle' if prediction.prediction == 'Pass' else 'times-circle' }} me-2"></i>
+                                {{ prediction.name }}
+                            </h2>
+                            <h3 class="mb-0">
+                                Prediction: <strong>{{ prediction.prediction }}</strong>
+                            </h3>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <span class="optimization-badge">
+                                <i class="fas fa-rocket me-1"></i>
+                                Optimized Model
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- Probability Section -->
+                    {% if prediction.prob_pass is not none and prediction.prob_fail is not none %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3"><i class="fas fa-percentage me-2"></i>Prediction Confidence</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="fw-bold text-success">Pass Probability</span>
+                                            <span class="fw-bold">{{ "%.1f"|format(prediction.prob_pass) }}%</span>
+                                        </div>
+                                        <div class="probability-bar bg-light">
+                                            <div class="probability-fill bg-success" style="width: {{ prediction.prob_pass }}%"></div>
+                                            <div class="probability-text">{{ "%.1f"|format(prediction.prob_pass) }}%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="fw-bold text-danger">Fail Probability</span>
+                                            <span class="fw-bold">{{ "%.1f"|format(prediction.prob_fail) }}%</span>
+                                        </div>
+                                        <div class="probability-bar bg-light">
+                                            <div class="probability-fill bg-danger" style="width: {{ prediction.prob_fail }}%"></div>
+                                            <div class="probability-text">{{ "%.1f"|format(prediction.prob_fail) }}%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Model Performance Metrics -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3"><i class="fas fa-chart-line me-2"></i>Model Optimization Details</h5>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="performance-metric">
+                                        <h6>Features Used</h6>
+                                        <div class="value">{{ prediction.features_used }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="performance-metric">
+                                        <h6>Total Features</h6>
+                                        <div class="value">{{ prediction.total_features }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="performance-metric">
+                                        <h6>Reduction</h6>
+                                        <div class="value">{{ prediction.feature_reduction }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="performance-metric">
+                                        <h6>Model Type</h6>
+                                        <div class="value" style="font-size: 1rem;">XGBoost</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Features Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="fas fa-sliders-h me-2"></i>Selected Features Used
+                                <span class="badge bg-primary ms-2">{{ selected_features|length }} features</span>
+                            </h5>
+                            <div class="row">
+                                {% for feature_name in selected_features %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="feature-item">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">{{ feature_name | title | replace('_', ' ') }}</h6>
+                                                <div class="feature-value">{{ features_display.get(feature_name, 'N/A') }}</div>
+                                            </div>
+                                        </div>
+                                        {% if feature_descriptions and feature_name in feature_descriptions %}
+                                        <small class="text-muted mt-2 d-block">
+                                            {{ feature_descriptions[feature_name] }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actual Value Comparison -->
+                    {% if actual_value_from_dataset %}
+                    <div class="alert alert-info d-flex align-items-center mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <div>
+                            <strong>Dataset Comparison:</strong>
+                            The actual value from the dataset is <strong>{{ actual_value_from_dataset | title }}</strong>.
+                            {% if prediction.prediction.lower() == actual_value_from_dataset.lower() %}
+                                <span class="text-success fw-bold">✓ Prediction matches actual value!</span>
+                            {% else %}
+                                <span class="text-warning fw-bold">⚠ Prediction differs from actual value.</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                                <a href="{{ url_for('xgb_predict') }}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-redo me-2"></i>Make Another Prediction
+                                </a>
+                                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-calculator me-2"></i>Compare All Models
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Why XGBoost Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-question-circle me-2"></i>Why XGBoost with Selected Features?
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Feature Selection Benefits</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Reduces overfitting</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Improves model interpretability</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Faster prediction time</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Focuses on most important factors</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary">XGBoost Advantages</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-star text-warning me-2"></i>Best overall performance</li>
+                                <li><i class="fas fa-star text-warning me-2"></i>Handles missing values well</li>
+                                <li><i class="fas fa-star text-warning me-2"></i>Built-in feature importance</li>
+                                <li><i class="fas fa-star text-warning me-2"></i>Robust to outliers</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Animate probability bars on load
+document.addEventListener('DOMContentLoaded', function() {
+    const probabilityBars = document.querySelectorAll('.probability-fill');
+    probabilityBars.forEach(bar => {
+        const width = bar.style.width;
+        bar.style.width = '0%';
+        setTimeout(() => {
+            bar.style.width = width;
+        }, 500);
+    });
+});
+</script>
+{% endblock %}

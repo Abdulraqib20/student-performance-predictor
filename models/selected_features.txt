@@ -1,0 +1,10 @@
+Mjob
+guardian
+failures
+schoolsup
+activities
+famrel
+freetime
+goout
+Dalc
+absences

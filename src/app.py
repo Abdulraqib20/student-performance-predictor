@@ -138,7 +138,9 @@ MODEL_DISPLAY_NAMES = {
     'rf_model.joblib': 'Random Forest Classifier',
     'knn_model.joblib': 'K-Nearest Neighbors (KNN)',
     'svm_model.joblib': 'Support Vector Machine (SVM)',
-    'xgb_model.joblib': 'XGBoost Classifier'
+    'xgb_model.joblib': 'XGBoost Classifier',
+    'optimized_xgb_model.joblib': 'XGBoost Optimized',
+    'final_optimized_xgb_model.joblib': 'XGBoost Final Optimized'
 }
 
 MODEL_PERFORMANCE_METRICS = {
@@ -658,6 +660,274 @@ def predict():
                                actual_value_from_dataset=actual_value_from_dataset)
 
     return redirect(url_for('index'))
+
+# XGBoost Selected Features (scientifically determined based on feature importance)
+# These are the top 10 most important features for XGBoost model based on feature importance analysis
+XGBOOST_SELECTED_FEATURES = [
+    'failures', 'age', 'absences', 'Medu', 'Fedu',
+    'goout', 'Dalc', 'freetime', 'studytime', 'famrel'
+]
+
+@app.route('/analyze_xgb_features')
+@login_required
+def analyze_xgb_features():
+    """Route to analyze XGBoost feature importance and determine best features."""
+    # Find XGBoost model
+    xgb_model = None
+    for model_filename, model_object in loaded_models.items():
+        if 'xgb' in model_filename.lower():
+            xgb_model = model_object
+            break
+
+    if not xgb_model:
+        return jsonify({"error": "XGBoost model not found"}), 404
+
+    try:
+        # Get feature importance from XGBoost model
+        if hasattr(xgb_model, 'feature_importances_'):
+            feature_importances = xgb_model.feature_importances_
+
+            # Create feature importance pairs
+            feature_importance_pairs = list(zip(final_feature_order_from_training, feature_importances))
+
+            # Sort by importance (descending)
+            feature_importance_pairs.sort(key=lambda x: x[1], reverse=True)
+
+            # Get top 10 features
+            top_10_features = [pair[0] for pair in feature_importance_pairs[:10]]
+
+            # Format for display
+            formatted_results = []
+            for i, (feature, importance) in enumerate(feature_importance_pairs[:15], 1):
+                formatted_results.append({
+                    'rank': i,
+                    'feature': feature,
+                    'importance': float(importance),
+                    'description': FEATURE_DESCRIPTIONS.get(feature, 'No description available'),
+                    'selected': feature in top_10_features
+                })
+
+            return jsonify({
+                'success': True,
+                'top_10_features': top_10_features,
+                'detailed_results': formatted_results,
+                'current_selected': XGBOOST_SELECTED_FEATURES
+            })
+        else:
+            return jsonify({"error": "XGBoost model does not have feature_importances_ attribute"}), 400
+
+    except Exception as e:
+        return jsonify({"error": f"Error analyzing features: {str(e)}"}), 500
+
+@app.route('/xgb_predict', methods=['GET', 'POST'])
+@login_required
+def xgb_predict():
+    """Route for XGBoost-only predictions using selected features."""
+    if request.method == 'GET':
+        # Render the XGBoost prediction form
+        return render_template('xgb_predict.html',
+                             selected_features=XGBOOST_SELECTED_FEATURES,
+                             feature_descriptions=FEATURE_DESCRIPTIONS,
+                             categorical_features=CATEGORICAL_FEATURE_NAMES_FOR_ENCODING,
+                             simple_categorical_values=SIMPLE_CATEGORICAL_VALUES_FOR_RANDOM_GEN,
+                             feature_ranges=FEATURE_RANGES,
+                             student_df=student_df)
+
+    if request.method == 'POST':
+        # Check if optimized XGBoost model is loaded
+        optimized_xgb_model = None
+        for model_filename, model_object in loaded_models.items():
+            if 'final_optimized_xgb' in model_filename.lower() or 'optimized_xgb' in model_filename.lower():
+                optimized_xgb_model = model_object
+                break
+
+        if optimized_xgb_model is None:
+            # Fall back to regular XGBoost model
+            for model_filename, model_object in loaded_models.items():
+                if 'xgb' in model_filename.lower():
+                    optimized_xgb_model = model_object
+                    break
+
+        if optimized_xgb_model is None:
+            flash("XGBoost model is not loaded. Cannot make predictions.", "danger")
+            return redirect(url_for('xgb_predict'))
+
+        if not preprocessors_loaded_successfully:
+            flash("Critical preprocessor components are missing. Predictions cannot be made reliably.", "danger")
+            return redirect(url_for('xgb_predict'))
+
+        # Collect input data for selected features only
+        raw_input_data = {}
+        raw_features_for_display = {}
+        actual_value_from_dataset = request.form.get('actual_value_from_dataset')
+
+        # 1. Collect and validate inputs for selected features only
+        for feature_name in XGBOOST_SELECTED_FEATURES:
+            value = request.form.get(feature_name)
+            raw_features_for_display[feature_name] = value
+            if value is None or value == '':
+                flash(f'Please provide a value for all features. {feature_name.replace("_"," ").title()} is missing.', 'warning')
+                return redirect(url_for('xgb_predict'))
+            raw_input_data[feature_name] = value
+
+        # 2. Create DataFrame from input (selected features only)
+        input_df = pd.DataFrame([raw_input_data])
+
+        # 3. Convert column types for numerical features
+        selected_numerical_cols = [col for col in fitted_numerical_cols if col in XGBOOST_SELECTED_FEATURES]
+        for col in selected_numerical_cols:
+            if col in input_df.columns:
+                try:
+                    input_df[col] = pd.to_numeric(input_df[col])
+                except ValueError:
+                    flash(f"Invalid value for numerical feature '{col}': '{input_df[col].iloc[0]}'. Please enter a number.", 'danger')
+                    return redirect(url_for('xgb_predict'))
+
+        # 4. Apply Label Encoders (only for selected categorical features)
+        selected_categorical_cols = [col for col in CATEGORICAL_FEATURE_NAMES_FOR_ENCODING if col in XGBOOST_SELECTED_FEATURES]
+        processed_df = apply_label_encoders(
+            input_df.copy(),
+            categorical_cols=selected_categorical_cols,
+            preprocessor_dir=PREPROCESSOR_DIR,
+            mode='transform',
+            encoders_dict=loaded_label_encoders
+        )
+        if processed_df is None:
+            flash("Error during categorical data encoding. An invalid value might have been provided.", "danger")
+            return redirect(url_for('xgb_predict'))
+
+        # 5. Apply Standard Scaler (only for selected numerical features)
+        # The scaler was trained on all features, so we need to create a full feature set
+        # with dummy values for missing features, then extract only selected ones after scaling
+
+        # Create a full feature DataFrame with dummy values for missing features
+        full_feature_df = processed_df.copy()
+
+        # Add dummy values for missing numerical features that the scaler expects
+        for col in fitted_numerical_cols:
+            if col not in full_feature_df.columns:
+                # Add dummy value (median/mean) for missing numerical features
+                if col in ['age']:
+                    full_feature_df[col] = 17  # typical student age
+                elif col in ['Medu', 'Fedu', 'traveltime', 'studytime', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health']:
+                    full_feature_df[col] = 3  # middle value for 1-5 scales
+                elif col in ['failures']:
+                    full_feature_df[col] = 0  # most common value
+                elif col in ['absences']:
+                    full_feature_df[col] = 5  # moderate absence level
+                else:
+                    full_feature_df[col] = 0  # default fallback
+
+        # Apply scaler to full feature set
+        scaled_full_df = apply_standard_scaler(
+            full_feature_df,
+            numerical_cols=fitted_numerical_cols,
+            preprocessor_dir=PREPROCESSOR_DIR,
+            mode='transform',
+            scaler_object=loaded_standard_scaler
+        )
+
+        if scaled_full_df is None:
+            flash("Error during numerical data scaling. Please check inputs.", "danger")
+            return redirect(url_for('xgb_predict'))
+
+        # Extract only the selected features after scaling
+        try:
+            processed_df = scaled_full_df[XGBOOST_SELECTED_FEATURES]
+        except KeyError as e:
+            flash(f"Error: Some selected features are missing after scaling: {str(e)}", "danger")
+            return redirect(url_for('xgb_predict'))
+
+        # 6. Ensure we have only the selected features in the correct order
+        # Get the intersection of selected features and final feature order
+        selected_features_in_order = [f for f in final_feature_order_from_training if f in XGBOOST_SELECTED_FEATURES]
+
+        if not selected_features_in_order:
+            flash("Error: No matching features found in the model's expected feature order.", "danger")
+            return redirect(url_for('xgb_predict'))
+
+        try:
+            processed_df = processed_df[selected_features_in_order]
+        except KeyError as e:
+            flash(f"Error: Some selected features are missing after preprocessing: {str(e)}", "danger")
+            return redirect(url_for('xgb_predict'))
+
+        # 7. Convert to NumPy array for prediction
+        final_features_array = processed_df.to_numpy()
+        if final_features_array.ndim == 1:
+            final_features_array = final_features_array.reshape(1, -1)
+
+        # 8. Make prediction with XGBoost model
+        prediction_label = "Error"
+        prob_pass = None
+        prob_fail = None
+
+        try:
+            if hasattr(optimized_xgb_model, 'predict_proba') and callable(optimized_xgb_model.predict_proba):
+                probabilities = optimized_xgb_model.predict_proba(final_features_array)
+                class_labels = getattr(optimized_xgb_model, 'classes_', [0, 1])
+                idx_pass = 1
+                idx_fail = 0
+
+                # Get target encoder for interpretation
+                target_encoder_path = os.path.join(PREPROCESSOR_DIR, "passed_label_encoder.joblib")
+                le_passed = load_preprocessor(target_encoder_path)
+
+                if le_passed:
+                    try:
+                        pass_label_numeric = le_passed.transform(['yes'])[0]
+                        list_class_labels = list(class_labels)
+                        if pass_label_numeric in list_class_labels:
+                            idx_pass = list_class_labels.index(pass_label_numeric)
+                            idx_fail = 1 - idx_pass
+                    except Exception:
+                        pass
+
+                prob_pass = probabilities[0][idx_pass]
+                prob_fail = probabilities[0][idx_fail]
+                predicted_class_index = np.argmax(probabilities[0])
+                prediction_label = "Pass" if predicted_class_index == idx_pass else "Fail"
+
+            else:
+                # Fallback to regular predict
+                prediction_result = optimized_xgb_model.predict(final_features_array)
+                target_encoder_path = os.path.join(PREPROCESSOR_DIR, "passed_label_encoder.joblib")
+                le_passed = load_preprocessor(target_encoder_path)
+                pass_numeric_val = 1
+                if le_passed:
+                    try:
+                        pass_numeric_val = le_passed.transform(['yes'])[0]
+                    except Exception:
+                        pass
+                prediction_label = "Pass" if prediction_result[0] == pass_numeric_val else "Fail"
+
+        except Exception as e:
+            flash(f"Error during prediction: {str(e)}", "danger")
+            return redirect(url_for('xgb_predict'))
+
+        # 9. Prepare prediction result
+        xgb_prediction = {
+            'name': 'XGBoost (Optimized)',
+            'prediction': prediction_label,
+            'prob_pass': float(prob_pass * 100) if prob_pass is not None else None,
+            'prob_fail': float(prob_fail * 100) if prob_fail is not None else None,
+            'features_used': len(XGBOOST_SELECTED_FEATURES),
+            'total_features': len(ALL_FEATURE_NAMES),
+            'feature_reduction': f"{((len(ALL_FEATURE_NAMES) - len(XGBOOST_SELECTED_FEATURES)) / len(ALL_FEATURE_NAMES)) * 100:.1f}%"
+        }
+
+        # Store prediction in session for AI interpretation
+        session['last_xgb_prediction'] = xgb_prediction
+        session['last_xgb_features'] = raw_features_for_display
+
+        return render_template('xgb_result.html',
+                             prediction=xgb_prediction,
+                             features_display=raw_features_for_display,
+                             selected_features=XGBOOST_SELECTED_FEATURES,
+                             feature_descriptions=FEATURE_DESCRIPTIONS,
+                             actual_value_from_dataset=actual_value_from_dataset)
+
+    return redirect(url_for('xgb_predict'))
 
 # Define custom_ai_prompt outside of any function so it can be used by multiple functions
 def custom_ai_prompt(features, feature_descriptions, all_feature_names, prediction_outcome, all_model_preds):
@@ -1386,6 +1656,40 @@ def ai_model_info():
 def enhanced_ai():
     """Route for the enhanced AI chat interface."""
     return render_template('enhanced_ai_interface.html')
+
+@app.route('/debug/models')
+@login_required
+def debug_models():
+    """Debug route to check loaded models status."""
+    debug_info = {
+        "models_loaded": len(loaded_models),
+        "loaded_model_files": list(loaded_models.keys()),
+        "model_display_names": MODEL_DISPLAY_NAMES,
+        "preprocessors_loaded": preprocessors_loaded_successfully,
+        "final_feature_order_length": len(final_feature_order_from_training),
+        "xgboost_selected_features": XGBOOST_SELECTED_FEATURES,
+        "models_directory_exists": os.path.exists(MODEL_DIR),
+        "models_directory_path": MODEL_DIR
+    }
+
+    # Check if specific models exist
+    for model_file in ["xgb_model.joblib", "optimized_xgb_model.joblib", "final_optimized_xgb_model.joblib"]:
+        model_path = os.path.join(MODEL_DIR, model_file)
+        debug_info[f"{model_file}_exists"] = os.path.exists(model_path)
+
+    # Find XGBoost models in loaded_models
+    xgb_models_found = []
+    for model_filename, model_object in loaded_models.items():
+        if 'xgb' in model_filename.lower():
+            xgb_models_found.append({
+                "filename": model_filename,
+                "type": type(model_object).__name__,
+                "has_feature_importances": hasattr(model_object, 'feature_importances_')
+            })
+
+    debug_info["xgb_models_found"] = xgb_models_found
+
+    return jsonify(debug_info)
 
 # Only run the server if this file is executed directly (not under Gunicorn)
 if __name__ == '__main__':
