@@ -213,32 +213,6 @@
                     </div>
                 </form>
 
-                <!-- Dataset Loader Section -->
-                {% if student_df is not none %}
-                <div class="dataset-loader">
-                    <h5 class="mb-3">
-                        <i class="fas fa-database me-2"></i>Load from Dataset
-                        <span class="badge bg-secondary">{{ student_df.shape[0] }} samples</span>
-                    </h5>
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                                <input type="number" id="datasetRowIndex" class="form-control"
-                                       min="0" max="{{ student_df.shape[0] - 1 }}"
-                                       placeholder="Enter row index (0-{{ student_df.shape[0] - 1 }})">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <button type="button" class="btn btn-outline-primary w-100" onclick="loadXGBDatasetRow()">
-                                <i class="fas fa-upload me-2"></i>Load Row
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -265,54 +239,6 @@ function generateRandomXGBInput() {
             }
         }
     });
-}
-
-function loadXGBDatasetRow() {
-    const rowIndex = document.getElementById('datasetRowIndex').value;
-    if (rowIndex === '') {
-        alert('Please enter a row index');
-        return;
-    }
-
-    fetch(`{{ url_for('get_dataset_row', row_index=0) }}`.replace('0', rowIndex))
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert('Error: ' + data.error);
-                return;
-            }
-
-            // Check if data structure is valid
-            if (!data || typeof data !== 'object') {
-                alert('Error: Invalid data structure received from server');
-                console.error('Invalid data structure:', data);
-                return;
-            }
-
-            const selectedFeatures = {{ selected_features | tojson }};
-            let fieldsSet = 0;
-
-            // Fill only the selected features
-            // The server returns features directly in the data object
-            selectedFeatures.forEach(feature => {
-                const element = document.getElementById(feature);
-                if (element && data.hasOwnProperty(feature) && data[feature] !== undefined && data[feature] !== null) {
-                    element.value = data[feature];
-                    fieldsSet++;
-                }
-            });
-
-            // Set actual value if available
-            if (data.hasOwnProperty('actual_value_from_dataset') && data['actual_value_from_dataset']) {
-                document.getElementById('actual_value_from_dataset').value = data['actual_value_from_dataset'];
-            }
-
-            alert(`Row data loaded successfully! ${fieldsSet} out of ${selectedFeatures.length} selected features have been filled.`);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error loading row data: ' + error.message);
-        });
 }
 
 function viewFeatureImportance() {
