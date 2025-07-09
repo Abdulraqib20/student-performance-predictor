@@ -582,6 +582,10 @@ def predict():
         # --- Prediction Loop ---
         all_predictions_data = []
         for model_filename, model_object in loaded_models.items():
+            # Skip optimized XGBoost models from main prediction page (they have their own dedicated page)
+            if model_filename in ['optimized_xgb_model.joblib', 'final_optimized_xgb_model.joblib']:
+                continue
+
             display_name = MODEL_DISPLAY_NAMES.get(model_filename, model_filename.replace('.joblib','').replace('.pkl','').title())
             model_metrics = MODEL_PERFORMANCE_METRICS.get(model_filename)
             prediction_label = "Error"
